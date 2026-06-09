@@ -1,0 +1,39 @@
+name: Release
+
+# Create a GitHub release whenever the integration's manifest version changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - custom_components/abrp_mate/manifest.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Tag and release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read manifest version
+        id: version
+        run: |
+          version="$(jq -r .version custom_components/abrp_mate/manifest.json)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Create release if it doesn't exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.version.outputs.version }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; nothing to do."
+            exit 0
+          fi
+          gh release create "$tag" \
+            --title "$tag" \
+            --generate-notes \
+            --target "${{ github.sha }}"

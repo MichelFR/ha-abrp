@@ -1,9 +1,13 @@
-# ABRP Mate
+# ABRP
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![Validate](https://github.com/MichelFR/ha-abrp/actions/workflows/validate.yml/badge.svg)](https://github.com/MichelFR/ha-abrp/actions/workflows/validate.yml)
 
 A Home Assistant custom integration for [A Better Route Planner](https://abetterrouteplanner.com)
 (ABRP).
+
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=MichelFR&repository=ha-abrp&category=integration)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=abrp_mate)
 
 > **This integration reads your vehicle telemetry *from* ABRP — it does not push
 > telemetry to it.** It is the opposite of the well-known "send data to ABRP"
@@ -26,8 +30,12 @@ A Home Assistant custom integration for [A Better Route Planner](https://abetter
 
 ### HACS (recommended)
 
-1. In HACS, add this repository as a custom repository (category: *Integration*).
-2. Install **ABRP Mate** and restart Home Assistant.
+1. Click the button below to add this repository to HACS, or in HACS add it
+   manually as a custom repository (category: *Integration*):
+
+   [![Add repository](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=MichelFR&repository=ha-abrp&category=integration)
+
+2. Install **ABRP** and restart Home Assistant.
 
 ### Manual
 
@@ -38,11 +46,13 @@ A Home Assistant custom integration for [A Better Route Planner](https://abetter
 ## Configuration
 
 1. Go to **Settings → Devices & Services → Add Integration** and search for
-   **ABRP Mate**.
+   **ABRP** (or use the button below):
+
+   [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=abrp_mate)
+
 2. **Scan the QR code** (or open the link) shown in the dialog on a device that
    is signed in to ABRP, and approve the connection.
-3. That's it — the dialog continues **automatically** once approved (there is no
-   button to press), and your vehicles are discovered.
+3. That's it — the dialog continues **automatically** once approved and your vehicles are discovered.
 
 If the stored login ever expires, Home Assistant prompts you to re-authenticate
 with the same QR step.
@@ -58,7 +68,7 @@ with the same QR step.
 | Device tracker | GPS location (with heading, speed, country, timezone attributes) |
 | Select | Drive profile (the vehicle's ABRP configurations, e.g. Standard / winter tyres) |
 
-### Account ("ABRP Mate" device) — route-planning preferences
+### Account ("ABRP" device) — route-planning preferences
 
 | Type | Entities |
 | --- | --- |

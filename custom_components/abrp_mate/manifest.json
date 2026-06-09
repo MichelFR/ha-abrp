@@ -1,13 +1,13 @@
 {
   "domain": "abrp_mate",
-  "name": "ABRP Mate",
-  "codeowners": ["@michelferreiraribeiro"],
+  "name": "ABRP",
+  "codeowners": ["@MichelFR"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/michelferreiraribeiro/homeassistant-abrp",
+  "documentation": "https://github.com/MichelFR/ha-abrp",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/michelferreiraribeiro/homeassistant-abrp/issues",
+  "issue_tracker": "https://github.com/MichelFR/ha-abrp/issues",
   "requirements": ["qrcode[pil]==7.4.2"],
   "version": "0.1.0"
 }

@@ -57,7 +57,7 @@ class AbrpMateAccountEntity(CoordinatorEntity[AbrpMateCoordinator]):
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.coordinator.entry.entry_id}_account")},
-            name="ABRP Mate",
+            name="ABRP",
             manufacturer="ABRP",
             model="Route planning",
             entry_type=DeviceEntryType.SERVICE,
