@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import logging
+import time
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AbrpApi, AbrpApiError, Snapshot, Vehicle
-from .const import DEFAULT_POLL_INTERVAL, DOMAIN
+from .const import DEFAULT_POLL_INTERVAL, DOMAIN, SETTINGS_REFRESH_INTERVAL
 from .metadata import AbrpMetadata, async_get_metadata
 from .oauth import AbrpOAuth
 from .stream import AbrpLiveStream
@@ -39,6 +42,8 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         self.metadata: AbrpMetadata | None = None
         self.api: AbrpApi | None = None
         self.vehicles: dict[int, Vehicle] = {}
+        self.settings: dict[str, Any] = {}
+        self._settings_fetched_at: float = 0.0
         self._streams: dict[int, AbrpLiveStream] = {}
 
     async def _async_ensure_api(self) -> AbrpApi:
@@ -57,6 +62,16 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
             raise UpdateFailed(str(err)) from err
 
         self.vehicles = {vehicle.vehicle_id: vehicle for vehicle in refresh.vehicles}
+
+        # Refresh account settings occasionally so externally-made changes show.
+        if (time.monotonic() - self._settings_fetched_at) > (
+            SETTINGS_REFRESH_INTERVAL.total_seconds()
+        ):
+            try:
+                self.settings = await api.get_settings(access_token)
+                self._settings_fetched_at = time.monotonic()
+            except AbrpApiError as err:
+                _LOGGER.debug("ABRP settings refresh failed: %s", err)
 
         # Merge polled snapshots onto whatever the realtime stream has pushed,
         # keeping the most recently recorded value per vehicle.
@@ -85,6 +100,19 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
             )
             self._streams[vehicle_id] = stream
             stream.start()
+
+    async def async_set_setting(self, key: str, value: Any) -> None:
+        """Update a single account planning setting and reflect it locally."""
+        api = await self._async_ensure_api()
+        access_token = await self.tokens.async_get_token()
+        try:
+            await api.set_settings(access_token, {key: value})
+        except AbrpApiError as err:
+            raise HomeAssistantError(
+                f"Failed to update ABRP setting {key}: {err}"
+            ) from err
+        self.settings = {**self.settings, key: value}
+        self.async_update_listeners()
 
     def _handle_stream_snapshot(self, snapshot: Snapshot) -> None:
         """Apply a realtime snapshot pushed by the SSE stream."""

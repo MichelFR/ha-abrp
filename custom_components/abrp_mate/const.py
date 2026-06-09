@@ -6,10 +6,16 @@ from datetime import timedelta
 
 DOMAIN = "abrp_mate"
 
-# --- ABRP / Iternio telemetry endpoints ---
+# --- ABRP / Iternio telemetry + settings endpoints ---
 ABRP_HOME_URL = "https://abetterrouteplanner.com/"
 GET_TLM_URL = "https://api.iternio.com/1/session/get_tlm"
+GET_SESSION_URL = "https://api.iternio.com/1/session/get_session"
+SET_SETTINGS_URL = "https://api.iternio.com/1/session/set_settings"
 TLM_EVENTS_URL = "https://api.iternio.com/2/tlm"
+
+# get_session body needs these alongside the session id.
+ABRP_CLIENT = "abrp-web"
+ABRP_COUNTRY_3 = "DEU"
 
 # --- ABRP accounts (OAuth2 + QR "remote app" login) ---
 # ABRP migrated auth to an OAuth2/OIDC service. Login: open a connect link on a
@@ -82,7 +88,15 @@ def stream_headers(api_key: str, app_version: str, session_id: str) -> dict[str,
 # tokens are short-lived and fetched on demand.
 CONF_REFRESH_TOKEN = "refresh_token"
 
-PLATFORMS = ["sensor", "binary_sensor", "device_tracker"]
+PLATFORMS = ["sensor", "binary_sensor", "device_tracker", "number", "switch", "select"]
+
+# Account-level planning settings exposed as controls.
+SETTING_ARRIVAL_SOC = "arrival_soc"
+SETTING_CHARGE_STOPS = "charge_stops"
+CHARGE_STOPS_OPTIONS = ["optimal", "fewer", "fewest"]
+AVOID_SETTINGS = ("avoid_tolls", "avoid_ferries", "avoid_borders", "avoid_motorways")
+# Re-fetch account settings from ABRP at most this often during polling.
+SETTINGS_REFRESH_INTERVAL = timedelta(minutes=5)
 
 # How often the coordinator polls get_tlm as a baseline. The realtime SSE
 # stream pushes updates more frequently when the vehicle is active.

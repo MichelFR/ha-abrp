@@ -49,6 +49,25 @@
     },
     "device_tracker": {
       "location": { "name": "Location" }
+    },
+    "number": {
+      "arrival_soc": { "name": "Destination SoC" }
+    },
+    "switch": {
+      "avoid_tolls": { "name": "Avoid tolls" },
+      "avoid_ferries": { "name": "Avoid ferries" },
+      "avoid_borders": { "name": "Avoid border crossings" },
+      "avoid_motorways": { "name": "Avoid motorways" }
+    },
+    "select": {
+      "charge_stops": {
+        "name": "Charge stops",
+        "state": {
+          "optimal": "Optimal",
+          "fewer": "Fewer",
+          "fewest": "Fewest"
+        }
+      }
     }
   }
 }

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import Snapshot, Vehicle
@@ -40,4 +40,25 @@ class AbrpMateEntity(CoordinatorEntity[AbrpMateCoordinator]):
             name=name,
             manufacturer="ABRP",
             model=(vehicle.car_model if vehicle else None) or "Electric Vehicle",
+        )
+
+
+class AbrpMateAccountEntity(CoordinatorEntity[AbrpMateCoordinator]):
+    """Base entity for account-level planning settings (not per-vehicle)."""
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator: AbrpMateCoordinator, key: str) -> None:
+        super().__init__(coordinator)
+        self._key = key
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_{key}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self.coordinator.entry.entry_id}_account")},
+            name="ABRP Mate",
+            manufacturer="ABRP",
+            model="Route planning",
+            entry_type=DeviceEntryType.SERVICE,
         )

@@ -14,7 +14,14 @@ from typing import Any
 
 import aiohttp
 
-from .const import GET_TLM_URL, web_request_headers
+from .const import (
+    ABRP_CLIENT,
+    ABRP_COUNTRY_3,
+    GET_SESSION_URL,
+    GET_TLM_URL,
+    SET_SETTINGS_URL,
+    web_request_headers,
+)
 from .metadata import AbrpMetadata
 
 # Transient signals (speed, power, ...) carry the per-field timestamp from when
@@ -135,6 +142,34 @@ class AbrpApi:
             vehicles=vehicles,
             snapshots=snapshots,
         )
+
+    async def get_settings(self, access_token: str) -> dict[str, Any]:
+        """Return the account's planning settings."""
+        response = await self._post(
+            GET_SESSION_URL,
+            {
+                "session_id": access_token,
+                "client": ABRP_CLIENT,
+                "version": self._metadata.app_build_number,
+                "country_3": ABRP_COUNTRY_3,
+            },
+            web_request_headers(self._metadata.api_key),
+        )
+        if response.get("status") != "ok":
+            raise AbrpApiError(f"get_session returned {response.get('status')!r}")
+        result = response.get("result") or {}
+        settings = result.get("settings")
+        return settings if isinstance(settings, dict) else {}
+
+    async def set_settings(self, access_token: str, changes: dict[str, Any]) -> None:
+        """Apply a partial update to the account's planning settings."""
+        response = await self._post(
+            SET_SETTINGS_URL,
+            {"session_id": access_token, "settings": changes},
+            web_request_headers(self._metadata.api_key),
+        )
+        if response.get("status") != "ok":
+            raise AbrpApiError(f"set_settings returned {response.get('status')!r}")
 
 
 # --- normalization helpers ------------------------------------------------
