@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to ABRP",
+        "description": "Open this link in a browser where you are signed in to A Better Route Planner and approve the connection, then press Submit:\n\n{connect_url}"
+      }
+    },
+    "error": {
+      "not_authorized": "The connection has not been approved yet. Open the link, approve it in ABRP, then try again.",
+      "cannot_connect": "Failed to connect to ABRP."
+    },
+    "abort": {
+      "cannot_connect": "Failed to connect to ABRP.",
+      "already_configured": "This ABRP account is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "soc": { "name": "State of charge" },
+      "power": { "name": "Power" },
+      "speed": { "name": "Speed" },
+      "odometer": { "name": "Odometer" },
+      "range": { "name": "Estimated range" },
+      "voltage": { "name": "Voltage" },
+      "current": { "name": "Current" },
+      "charge_energy_added": { "name": "Charge energy added" },
+      "external_temp": { "name": "External temperature" },
+      "battery_temp": { "name": "Battery temperature" },
+      "cabin_temp": { "name": "Cabin temperature" }
+    },
+    "binary_sensor": {
+      "charging": { "name": "Charging" },
+      "driving": { "name": "Driving" },
+      "parked": { "name": "Parked" },
+      "fast_charging": { "name": "Fast charging" }
+    },
+    "device_tracker": {
+      "location": { "name": "Location" }
+    }
+  }
+}
