@@ -11,7 +11,9 @@ API_KEY = "f4128c06-5e39-4852-95f9-3286712a9f3a"
 V1_AUTHORIZATION_HEADER = f"APIKEY {API_KEY}"
 
 NEW_SESSION_URL = "https://api.iternio.com/1/session/new_session"
-CONNECT_SESSION_REQUEST_URL = "https://api.iternio.com/1/session/connect_session_request"
+CONNECT_SESSION_REQUEST_URL = (
+    "https://api.iternio.com/1/session/connect_session_request"
+)
 GET_SESSION_URL = "https://api.iternio.com/1/session/get_session"
 GET_TLM_URL = "https://api.iternio.com/1/session/get_tlm"
 TLM_EVENTS_URL = "https://api.iternio.com/2/tlm"

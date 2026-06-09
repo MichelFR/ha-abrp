@@ -202,7 +202,8 @@ def _choose(current: Any, nxt: Any) -> Any:
 def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     """Merge a decoded SSE event onto the snapshot (mirrors abrp-live-stream.ts)."""
     snapshot.battery_capacity_kwh = _choose(
-        snapshot.battery_capacity_kwh, _scale(_rec(event, "batteryCapacity"), "wh", 1000)
+        snapshot.battery_capacity_kwh,
+        _scale(_rec(event, "batteryCapacity"), "wh", 1000),
     )
     snapshot.batt_temp_c = _choose(
         snapshot.batt_temp_c, _num(_rec(event, "batteryTemperature"), "c")
@@ -216,7 +217,8 @@ def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     )
     snapshot.current_a = _choose(snapshot.current_a, _num(_rec(event, "current"), "a"))
     snapshot.estimated_range_km = _choose(
-        snapshot.estimated_range_km, _scale(_rec(event, "estimatedBatteryRange"), "m", 1000)
+        snapshot.estimated_range_km,
+        _scale(_rec(event, "estimatedBatteryRange"), "m", 1000),
     )
     snapshot.ext_temp_c = _choose(
         snapshot.ext_temp_c, _num(_rec(event, "externalTemperature"), "c")
@@ -233,7 +235,9 @@ def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     snapshot.odometer_km = _choose(
         snapshot.odometer_km, _scale(_rec(event, "odometer"), "m", 1000)
     )
-    snapshot.power_kw = _choose(snapshot.power_kw, _scale(_rec(event, "power"), "w", 1000))
+    snapshot.power_kw = _choose(
+        snapshot.power_kw, _scale(_rec(event, "power"), "w", 1000)
+    )
     # soc.frac is a 0..1 fraction; /0.01 converts it to a percentage.
     snapshot.soc_percent = _choose(
         snapshot.soc_percent, _scale(_rec(event, "soc"), "frac", 0.01)

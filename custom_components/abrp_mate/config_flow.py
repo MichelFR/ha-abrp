@@ -66,9 +66,7 @@ class AbrpMateConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def _poll_for_authentication(
-        self, api: AbrpApi
-    ) -> ConfigFlowResult | None:
+    async def _poll_for_authentication(self, api: AbrpApi) -> ConfigFlowResult | None:
         """Poll get_session; return a created entry once authenticated."""
         assert self._pending is not None
         session_id = self._pending.session_id

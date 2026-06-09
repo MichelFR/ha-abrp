@@ -114,9 +114,7 @@ class AbrpApi:
         self, url: str, body: dict[str, Any], headers: dict[str, str]
     ) -> dict[str, Any]:
         try:
-            async with self._session.post(
-                url, json=body, headers=headers
-            ) as response:
+            async with self._session.post(url, json=body, headers=headers) as response:
                 response.raise_for_status()
                 return await response.json()
         except aiohttp.ClientError as err:
@@ -182,13 +180,9 @@ class AbrpApi:
     async def refresh_vehicles(self, session_id: str) -> VehicleRefresh:
         """Fetch vehicle metadata and the latest telemetry snapshot."""
         headers = {**ABRP_WEB_REQUEST_HEADERS, "accept": "*/*"}
-        response = await self._post(
-            GET_TLM_URL, {"session_id": session_id}, headers
-        )
+        response = await self._post(GET_TLM_URL, {"session_id": session_id}, headers)
         if response.get("status") != "ok":
-            raise AbrpApiError(
-                f"get_tlm returned status {response.get('status')!r}"
-            )
+            raise AbrpApiError(f"get_tlm returned status {response.get('status')!r}")
 
         result = response.get("result") or []
         vehicles = [_normalize_vehicle(item) for item in result]
@@ -208,7 +202,11 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
 
 def _as_float(value: Any) -> float | None:
-    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+    return (
+        float(value)
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+        else None
+    )
 
 
 def _as_bool(value: Any) -> bool | None:
@@ -270,6 +268,8 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         or _as_float(tlm.get("kwh_charged")),
         timezone=_as_str(location.get("timezone")),
         country3=_as_str(location.get("country_3")),
-        charger_id=tlm.get("charger_id") if isinstance(tlm.get("charger_id"), int) else None,
+        charger_id=tlm.get("charger_id")
+        if isinstance(tlm.get("charger_id"), int)
+        else None,
         raw=item,
     )

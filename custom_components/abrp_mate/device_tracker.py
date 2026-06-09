@@ -29,9 +29,7 @@ class AbrpMateDeviceTracker(AbrpMateEntity, TrackerEntity):
 
     _attr_translation_key = "location"
 
-    def __init__(
-        self, coordinator: AbrpMateCoordinator, vehicle_id: int
-    ) -> None:
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
         super().__init__(coordinator, vehicle_id)
         self._attr_unique_id = f"{vehicle_id}_location"
 

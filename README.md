@@ -1,52 +1,56 @@
-# ABRP Mate for Home Assistant
+# ABRP Mate
 
-A Home Assistant custom integration that brings the same ABRP (A Better Route
-Planner) data exposed by the [ABRP Mate](../) collector into Home Assistant:
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
-- **Base data** — vehicle metadata (name, model) discovered from your ABRP
-  account, surfaced as a Home Assistant device per vehicle.
-- **Realtime data** — live telemetry (state of charge, power, speed, odometer,
-  range, temperatures, voltage/current, charging state, location) via ABRP's
-  polled `get_tlm` endpoint plus the `/2/tlm` server-sent-events stream.
+A Home Assistant custom integration for [A Better Route Planner](https://abetterrouteplanner.com)
+(ABRP). It connects to your ABRP account and exposes each vehicle as a device
+with live telemetry — state of charge, power, speed, odometer, range,
+temperatures, charging state and location.
 
-It is a Python port of the data layer in the Node ABRP Mate project: see
-[`api.py`](custom_components/abrp_mate/api.py) (auth + `get_tlm`) and
-[`stream.py`](custom_components/abrp_mate/stream.py) (realtime SSE stream).
+## Features
 
-## How it works
-
-| Concern | ABRP endpoint | File |
-| --- | --- | --- |
-| Login (connect link) | `new_session` → `connect_session_request` → poll `get_session` | [`config_flow.py`](custom_components/abrp_mate/config_flow.py) |
-| Base + polled telemetry | `get_tlm` | [`coordinator.py`](custom_components/abrp_mate/coordinator.py) |
-| Realtime telemetry | `/2/tlm` (SSE) | [`stream.py`](custom_components/abrp_mate/stream.py) |
+- One device per vehicle on your ABRP account.
+- Realtime telemetry via ABRP's live stream, with polling as a fallback.
+- Sensors: state of charge, power, speed, odometer, estimated range, voltage,
+  current, charge energy added, external/battery/cabin temperature.
+- Binary sensors: charging, driving, parked, fast charging.
+- Device tracker for the vehicle's GPS location.
 
 ## Installation
 
-1. Copy `custom_components/abrp_mate` into your Home Assistant `config/custom_components/` directory (or add this repository to HACS as a custom repository).
+### HACS (recommended)
+
+1. In HACS, add this repository as a custom repository (category: *Integration*).
+2. Install **ABRP Mate** and restart Home Assistant.
+
+### Manual
+
+1. Copy `custom_components/abrp_mate` into your Home Assistant
+   `config/custom_components/` directory.
 2. Restart Home Assistant.
-3. Go to **Settings → Devices & Services → Add Integration** and search for **ABRP Mate**.
-4. Open the connect link shown in the dialog in a browser where you are signed in to ABRP, approve the connection, then press **Submit**.
+
+## Configuration
+
+1. Go to **Settings → Devices & Services → Add Integration** and search for
+   **ABRP Mate**.
+2. Open the link shown in the dialog in a browser where you are signed in to
+   ABRP, approve the connection, then press **Submit**.
+
+The integration discovers your vehicles automatically once the connection is
+approved.
 
 ## Entities
 
 For each vehicle on the account:
 
-- **Sensors:** state of charge, power, speed, odometer, estimated range, voltage, current, charge energy added, external/battery/cabin temperature.
-- **Binary sensors:** charging, driving, parked, fast charging.
-- **Device tracker:** vehicle GPS location.
-
-## Branding
-
-The ABRP logo shown for this integration comes from Home Assistant's central
-brands CDN, not from this repo. Ready-to-submit icon assets (256×256 and
-512×512) live in [`brands/`](brands/) — see [`brands/README.md`](brands/README.md)
-for how to publish them to [`home-assistant/brands`](https://github.com/home-assistant/brands).
+| Type | Entities |
+| --- | --- |
+| Sensor | State of charge, power, speed, odometer, estimated range, voltage, current, charge energy added, external/battery/cabin temperature |
+| Binary sensor | Charging, driving, parked, fast charging |
+| Device tracker | Vehicle GPS location |
 
 ## Notes
 
-- This integration talks to ABRP's private web API using the same headers and
-  flow as the ABRP web app. There is no official public API, so endpoints may
-  change without notice.
-- Only your own account's vehicles are accessed, using a session you explicitly
-  approve.
+- This integration uses ABRP's web API with a session you explicitly approve;
+  only your own account's vehicles are accessed.
+- There is no official public ABRP API, so endpoints may change without notice.
