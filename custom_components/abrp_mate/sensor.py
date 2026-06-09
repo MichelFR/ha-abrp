@@ -201,6 +201,13 @@ class AbrpMateSensor(AbrpMateEntity, SensorEntity):
         self._attr_unique_id = f"{vehicle_id}_{description.key}"
 
     @property
+    def available(self) -> bool:
+        # Unavailable (not "unknown") when ABRP isn't currently providing this
+        # value — e.g. a stale/blanked transient signal or a field this vehicle
+        # doesn't report.
+        return super().available and self.native_value is not None
+
+    @property
     def native_value(self) -> float | None:
         snapshot = self.snapshot
         if snapshot is None:
@@ -233,6 +240,10 @@ class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
     def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
         super().__init__(coordinator, vehicle_id)
         self._attr_unique_id = f"{vehicle_id}_data_source"
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.native_value is not None
 
     @property
     def native_value(self) -> str | None:

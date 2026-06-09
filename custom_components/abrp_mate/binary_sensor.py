@@ -110,6 +110,12 @@ class AbrpMateBinarySensor(AbrpMateEntity, BinarySensorEntity):
         self._attr_unique_id = f"{vehicle_id}_{description.key}"
 
     @property
+    def available(self) -> bool:
+        # Unavailable (not "unknown") when ABRP doesn't report this state for
+        # the vehicle — e.g. driving/parked on a cloud-only vehicle.
+        return super().available and self.is_on is not None
+
+    @property
     def is_on(self) -> bool | None:
         snapshot = self.snapshot
         if snapshot is None:
