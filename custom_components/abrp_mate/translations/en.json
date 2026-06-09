@@ -30,6 +30,8 @@
       "external_temp": { "name": "External temperature" },
       "battery_temp": { "name": "Battery temperature" },
       "cabin_temp": { "name": "Cabin temperature" },
+      "vehicle_temp": { "name": "Vehicle temperature" },
+      "reference_consumption": { "name": "Reference consumption" },
       "last_update": { "name": "Last update" },
       "data_source": { "name": "Data source" }
     },
@@ -37,7 +39,11 @@
       "charging": { "name": "Charging" },
       "driving": { "name": "Driving" },
       "parked": { "name": "Parked" },
-      "fast_charging": { "name": "Fast charging" }
+      "fast_charging": { "name": "Fast charging" },
+      "online": { "name": "Online" },
+      "asleep": { "name": "Asleep" },
+      "cloud_connected": { "name": "Cloud connected" },
+      "obd_connected": { "name": "OBD connected" }
     },
     "device_tracker": {
       "location": { "name": "Location" }

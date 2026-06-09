@@ -10,6 +10,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -48,6 +49,33 @@ BINARY_SENSORS: tuple[AbrpBinarySensorDescription, ...] = (
         key="fast_charging",
         translation_key="fast_charging",
         value_fn=lambda s: s.is_dcfc,
+    ),
+    AbrpBinarySensorDescription(
+        key="online",
+        translation_key="online",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.is_connected,
+    ),
+    AbrpBinarySensorDescription(
+        key="asleep",
+        translation_key="asleep",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.is_asleep,
+    ),
+    AbrpBinarySensorDescription(
+        key="cloud_connected",
+        translation_key="cloud_connected",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.cloud_connected,
+    ),
+    AbrpBinarySensorDescription(
+        key="obd_connected",
+        translation_key="obd_connected",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.obd_connected,
     ),
 )
 

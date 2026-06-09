@@ -129,6 +129,22 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: s.cabin_temp_c,
     ),
+    AbrpSensorDescription(
+        key="vehicle_temp",
+        translation_key="vehicle_temp",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.vehicle_temp_c,
+    ),
+    AbrpSensorDescription(
+        key="reference_consumption",
+        translation_key="reference_consumption",
+        native_unit_of_measurement="Wh/km",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.ref_consumption_wh_km,
+    ),
 )
 
 
