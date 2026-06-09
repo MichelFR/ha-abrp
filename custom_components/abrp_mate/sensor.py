@@ -20,6 +20,7 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfLength,
+    UnitOfMass,
     UnitOfPower,
     UnitOfSpeed,
     UnitOfTemperature,
@@ -144,6 +145,24 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.ref_consumption_wh_km,
+    ),
+    AbrpSensorDescription(
+        key="max_speed",
+        translation_key="max_speed",
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        device_class=SensorDeviceClass.SPEED,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.max_speed_kmh,
+    ),
+    AbrpSensorDescription(
+        key="weight",
+        translation_key="weight",
+        native_unit_of_measurement=UnitOfMass.KILOGRAMS,
+        device_class=SensorDeviceClass.WEIGHT,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.weight_kg,
     ),
 )
 

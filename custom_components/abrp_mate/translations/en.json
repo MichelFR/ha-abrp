@@ -32,6 +32,8 @@
       "cabin_temp": { "name": "Cabin temperature" },
       "vehicle_temp": { "name": "Vehicle temperature" },
       "reference_consumption": { "name": "Reference consumption" },
+      "max_speed": { "name": "Max speed" },
+      "weight": { "name": "Weight" },
       "last_update": { "name": "Last update" },
       "data_source": { "name": "Data source" }
     },

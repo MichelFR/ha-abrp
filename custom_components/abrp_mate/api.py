@@ -78,6 +78,8 @@ class Snapshot:
     cloud_connected: bool | None = None  # via a connected cloud provider (OTA)
     obd_connected: bool | None = None  # via a local OBD dongle
     ref_consumption_wh_km: float | None = None
+    max_speed_kmh: float | None = None
+    weight_kg: float | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -215,5 +217,7 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         cloud_connected=_as_bool(item.get("ota_is_connected")),
         obd_connected=_as_bool(item.get("local_is_connected")),
         ref_consumption_wh_km=_as_float(tlm.get("calib_ref_cons")),
+        max_speed_kmh=_as_float(tlm.get("max_speed")),
+        weight_kg=_as_float(tlm.get("weight")),
         raw=item,
     )

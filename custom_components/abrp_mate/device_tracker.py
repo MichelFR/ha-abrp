@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.device_tracker import SourceType, TrackerEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -46,3 +48,15 @@ class AbrpMateDeviceTracker(AbrpMateEntity, TrackerEntity):
     def longitude(self) -> float | None:
         snapshot = self.snapshot
         return snapshot.longitude if snapshot else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        snapshot = self.snapshot
+        if snapshot is None:
+            return None
+        return {
+            "heading": snapshot.heading_deg,
+            "speed_kmh": snapshot.speed_kmh,
+            "country": snapshot.country3,
+            "timezone": snapshot.timezone,
+        }
