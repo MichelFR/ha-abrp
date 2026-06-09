@@ -1,13 +1,17 @@
 {
   "domain": "abrp_mate",
   "name": "ABRP",
-  "codeowners": ["@MichelFR"],
+  "codeowners": [
+    "@MichelFR"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/MichelFR/ha-abrp",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/MichelFR/ha-abrp/issues",
-  "requirements": ["qrcode[pil]==7.4.2"],
-  "version": "0.2.1"
+  "requirements": [
+    "qrcode[pil]==7.4.2"
+  ],
+  "version": "0.2.2"
 }
