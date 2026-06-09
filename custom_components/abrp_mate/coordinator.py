@@ -13,13 +13,28 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AbrpApi, AbrpApiError, Snapshot, Vehicle
-from .const import DEFAULT_POLL_INTERVAL, DOMAIN, SETTINGS_REFRESH_INTERVAL
+from .const import (
+    DOMAIN,
+    POLL_INTERVAL_ACTIVE,
+    POLL_INTERVAL_IDLE,
+    SETTINGS_REFRESH_INTERVAL,
+)
 from .metadata import AbrpMetadata, async_get_metadata
 from .oauth import AbrpOAuth
 from .stream import AbrpLiveStream
 from .token_manager import TokenManager
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _is_active(snapshot: Snapshot) -> bool:
+    """Whether a vehicle is doing something worth polling quickly for."""
+    return bool(
+        snapshot.is_connected
+        or snapshot.is_charging
+        or snapshot.is_driving
+        or (snapshot.speed_kmh is not None and snapshot.speed_kmh > 2)
+    )
 
 
 class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
@@ -34,7 +49,7 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=DEFAULT_POLL_INTERVAL,
+            update_interval=POLL_INTERVAL_IDLE,
         )
         self.entry = entry
         self._client = async_get_clientsession(hass)
@@ -91,6 +106,12 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
                 merged[snapshot.vehicle_id] = snapshot
 
         self._sync_streams(merged)
+        # Poll faster only while a vehicle is active; idle vehicles barely change.
+        self.update_interval = (
+            POLL_INTERVAL_ACTIVE
+            if any(_is_active(s) for s in merged.values())
+            else POLL_INTERVAL_IDLE
+        )
         return merged
 
     def _sync_streams(self, snapshots: dict[int, Snapshot]) -> None:
@@ -151,6 +172,9 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         if existing is None or snapshot.recorded_at >= existing.recorded_at:
             data[snapshot.vehicle_id] = snapshot
             self.async_set_updated_data(data)
+            # A live event means the vehicle just became active; speed up polling.
+            if _is_active(snapshot) and self.update_interval != POLL_INTERVAL_ACTIVE:
+                self.update_interval = POLL_INTERVAL_ACTIVE
 
     async def async_shutdown(self) -> None:
         """Stop all realtime streams when the entry unloads."""

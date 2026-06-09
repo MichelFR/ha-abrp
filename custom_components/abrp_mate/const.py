@@ -101,9 +101,12 @@ AVOID_SETTINGS = ("avoid_tolls", "avoid_ferries", "avoid_borders", "avoid_motorw
 # a safety-net interval in case a version change is ever missed.
 SETTINGS_REFRESH_INTERVAL = timedelta(minutes=30)
 
-# How often the coordinator polls get_tlm as a baseline. The realtime SSE
-# stream pushes updates more frequently when the vehicle is active.
-DEFAULT_POLL_INTERVAL = timedelta(seconds=30)
+# Adaptive get_tlm poll cadence. The realtime SSE stream delivers live updates
+# while a vehicle is active, so the poll is mostly a baseline/fallback: poll
+# slowly when every vehicle is idle (asleep/parked), faster when one is active
+# (connected, charging or driving).
+POLL_INTERVAL_ACTIVE = timedelta(seconds=60)
+POLL_INTERVAL_IDLE = timedelta(minutes=10)
 
 # Number of times the config flow polls login/abrp/status while waiting for the
 # user to approve the connect link, and the delay between polls.
