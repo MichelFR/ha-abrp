@@ -51,13 +51,18 @@
       "location": { "name": "Location" }
     },
     "number": {
-      "arrival_soc": { "name": "Destination SoC" }
+      "arrival_soc": { "name": "Destination SoC" },
+      "min_charger_stalls": { "name": "Minimum charger stalls" },
+      "extra_weight": { "name": "Extra weight" }
     },
     "switch": {
       "avoid_tolls": { "name": "Avoid tolls" },
       "avoid_ferries": { "name": "Avoid ferries" },
       "avoid_borders": { "name": "Avoid border crossings" },
-      "avoid_motorways": { "name": "Avoid motorways" }
+      "avoid_motorways": { "name": "Avoid motorways" },
+      "realtime_traffic": { "name": "Realtime traffic" },
+      "realtime_weather": { "name": "Realtime weather" },
+      "adjust_speed": { "name": "Adjust speed to limits" }
     },
     "select": {
       "charge_stops": {

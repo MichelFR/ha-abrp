@@ -1,23 +1,45 @@
-"""Switch platform for ABRP Mate ("Avoid on route" planning settings)."""
+"""Switch platform for ABRP Mate (boolean planning settings)."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import AbrpMateConfigEntry
-from .const import AVOID_SETTINGS
+from .coordinator import AbrpMateCoordinator
 from .entity import AbrpMateAccountEntity
 
-_ICONS = {
-    "avoid_tolls": "mdi:cash-multiple",
-    "avoid_ferries": "mdi:ferry",
-    "avoid_borders": "mdi:boom-gate",
-    "avoid_motorways": "mdi:highway",
-}
+# Each entry's key is the ABRP account setting it toggles.
+SWITCHES: tuple[SwitchEntityDescription, ...] = (
+    SwitchEntityDescription(
+        key="avoid_tolls", translation_key="avoid_tolls", icon="mdi:cash-multiple"
+    ),
+    SwitchEntityDescription(
+        key="avoid_ferries", translation_key="avoid_ferries", icon="mdi:ferry"
+    ),
+    SwitchEntityDescription(
+        key="avoid_borders", translation_key="avoid_borders", icon="mdi:boom-gate"
+    ),
+    SwitchEntityDescription(
+        key="avoid_motorways", translation_key="avoid_motorways", icon="mdi:highway"
+    ),
+    SwitchEntityDescription(
+        key="realtime_traffic",
+        translation_key="realtime_traffic",
+        icon="mdi:traffic-light",
+    ),
+    SwitchEntityDescription(
+        key="realtime_weather",
+        translation_key="realtime_weather",
+        icon="mdi:weather-partly-cloudy",
+    ),
+    SwitchEntityDescription(
+        key="adjust_speed", translation_key="adjust_speed", icon="mdi:speedometer"
+    ),
+)
 
 
 async def async_setup_entry(
@@ -25,23 +47,24 @@ async def async_setup_entry(
     entry: AbrpMateConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the ABRP Mate "avoid on route" switches."""
+    """Set up the ABRP Mate boolean setting switches."""
     coordinator = entry.runtime_data
-    async_add_entities(AbrpAvoidSwitch(coordinator, key) for key in AVOID_SETTINGS)
+    async_add_entities(AbrpSettingSwitch(coordinator, desc) for desc in SWITCHES)
 
 
-class AbrpAvoidSwitch(AbrpMateAccountEntity, SwitchEntity):
-    """Toggle an ABRP "avoid on route" planning preference."""
+class AbrpSettingSwitch(AbrpMateAccountEntity, SwitchEntity):
+    """Toggle a boolean ABRP planning setting."""
 
-    def __init__(self, coordinator, key: str) -> None:
-        super().__init__(coordinator, key)
-        self._attr_translation_key = key
-        self._attr_icon = _ICONS.get(key)
+    def __init__(
+        self, coordinator: AbrpMateCoordinator, description: SwitchEntityDescription
+    ) -> None:
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
 
     @property
     def is_on(self) -> bool | None:
         value = self.coordinator.settings.get(self._key)
-        return bool(value) if isinstance(value, bool) else None
+        return value if isinstance(value, bool) else None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.coordinator.async_set_setting(self._key, True)

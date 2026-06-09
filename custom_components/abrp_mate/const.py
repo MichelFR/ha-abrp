@@ -96,7 +96,6 @@ SETTING_ARRIVAL_SOC = "arrival_soc"
 SETTING_CHARGE_STOPS = "charge_stops"
 # ABRP's charge_stops values; "least" is shown as "Fewest" in the UI.
 CHARGE_STOPS_OPTIONS = ["optimal", "fewer", "least"]
-AVOID_SETTINGS = ("avoid_tolls", "avoid_ferries", "avoid_borders", "avoid_motorways")
 # Settings are normally re-fetched the moment their version bumps; this is just
 # a safety-net interval in case a version change is ever missed.
 SETTINGS_REFRESH_INTERVAL = timedelta(minutes=30)
@@ -105,7 +104,7 @@ SETTINGS_REFRESH_INTERVAL = timedelta(minutes=30)
 # while a vehicle is active, so the poll is mostly a baseline/fallback: poll
 # slowly when every vehicle is idle (asleep/parked), faster when one is active
 # (connected, charging or driving).
-POLL_INTERVAL_ACTIVE = timedelta(seconds=60)
+POLL_INTERVAL_ACTIVE = timedelta(seconds=10)
 POLL_INTERVAL_IDLE = timedelta(minutes=10)
 
 # Number of times the config flow polls login/abrp/status while waiting for the
