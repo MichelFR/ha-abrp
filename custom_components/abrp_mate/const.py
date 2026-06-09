@@ -85,5 +85,6 @@ DEFAULT_POLL_INTERVAL = timedelta(seconds=30)
 
 # Number of times the config flow polls get_session while waiting for the
 # user to approve the connect link, and the delay between polls.
-SESSION_POLL_ATTEMPTS = 30
+# Runs in the background, so a generous window (90 * 2s = 3 min) is fine.
+SESSION_POLL_ATTEMPTS = 90
 SESSION_POLL_INTERVAL_SECONDS = 2

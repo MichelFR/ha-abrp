@@ -3,15 +3,15 @@
     "step": {
       "user": {
         "title": "Connect to ABRP",
-        "description": "Open this link in a browser where you are signed in to A Better Route Planner and approve the connection, then press Submit:\n\n{connect_url}"
+        "description": "Scan this QR code, or open the link below, in the A Better Route Planner app or a browser where you are signed in, then approve the connection. This page continues automatically once approved.\n\n{qr}\n\n[Open connection link]({connect_url})"
       }
     },
-    "error": {
-      "not_authorized": "The connection has not been approved yet. Open the link, approve it in ABRP, then try again.",
-      "cannot_connect": "Failed to connect to ABRP."
+    "progress": {
+      "waiting_for_authorization": "Waiting for you to approve the connection in ABRP…"
     },
     "abort": {
       "cannot_connect": "Failed to connect to ABRP.",
+      "not_authorized": "The connection was not approved in time. Please start again.",
       "already_configured": "This ABRP account is already configured."
     }
   },

@@ -8,6 +8,6 @@
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/michelferreiraribeiro/homeassistant-abrp/issues",
-  "requirements": [],
+  "requirements": ["qrcode[pil]==7.4.2"],
   "version": "0.1.0"
 }
