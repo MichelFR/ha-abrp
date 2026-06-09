@@ -1,6 +1,6 @@
 """Config flow for the ABRP Mate integration.
 
-Replicates the Node project's connect-session ("QR") login:
+Implements the ABRP connect-session ("QR") login:
 
 1. ``new_session`` + ``connect_session_request`` produce a connect link.
 2. The user opens the link (or scans it) and approves the session in ABRP.

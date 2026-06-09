@@ -1,7 +1,6 @@
 """Async client for the ABRP / Iternio API.
 
-This is a Python port of the ABRP Mate Node project's `abrp-api.ts` and
-`auth-service.ts`. It covers the same two slices of functionality:
+It covers two slices of functionality:
 
 * **Auth** — the connect-session ("QR") login flow:
   ``new_session`` -> ``connect_session_request`` -> poll ``get_session``.
@@ -194,7 +193,7 @@ class AbrpApi:
         )
 
 
-# --- normalization helpers (mirrors abrp-api.ts) --------------------------
+# --- normalization helpers ------------------------------------------------
 
 
 def _as_dict(value: Any) -> dict[str, Any]:

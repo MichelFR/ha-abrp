@@ -1,9 +1,8 @@
 """Realtime telemetry stream for the ABRP Mate integration.
 
-Port of the Node project's `abrp-live-stream.ts`. It opens the ABRP
-server-sent-events endpoint (``/2/tlm``) for a vehicle and decodes the
-unit-tagged event payloads into :class:`Snapshot` updates that get merged
-onto the latest known snapshot.
+Opens the ABRP server-sent-events endpoint (``/2/tlm``) for a vehicle and
+decodes the unit-tagged event payloads into :class:`Snapshot` updates that get
+merged onto the latest known snapshot.
 """
 
 from __future__ import annotations
@@ -200,7 +199,7 @@ def _choose(current: Any, nxt: Any) -> Any:
 
 
 def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
-    """Merge a decoded SSE event onto the snapshot (mirrors abrp-live-stream.ts)."""
+    """Merge a decoded SSE event onto the snapshot."""
     snapshot.battery_capacity_kwh = _choose(
         snapshot.battery_capacity_kwh,
         _scale(_rec(event, "batteryCapacity"), "wh", 1000),

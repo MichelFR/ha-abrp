@@ -6,7 +6,7 @@ from datetime import timedelta
 
 DOMAIN = "abrp_mate"
 
-# --- ABRP / Iternio API constants (ported from the ABRP Mate Node project) ---
+# --- ABRP / Iternio API constants ---
 API_KEY = "f4128c06-5e39-4852-95f9-3286712a9f3a"
 V1_AUTHORIZATION_HEADER = f"APIKEY {API_KEY}"
 
