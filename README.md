@@ -62,3 +62,11 @@ For each vehicle on the account:
 - This integration uses ABRP's web API with a session you explicitly approve;
   only your own account's vehicles are accessed.
 - There is no official public ABRP API, so endpoints may change without notice.
+
+## Disclaimer
+
+This is an unofficial, community-built project. It is **not affiliated with,
+endorsed by, or associated with** A Better Route Planner, Iternio, or Rivian in
+any way. "A Better Route Planner", "ABRP", "Iternio" and "Rivian" are
+trademarks of their respective owners and are used here only to describe what
+this integration interoperates with. Use at your own risk.
