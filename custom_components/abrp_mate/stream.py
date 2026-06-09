@@ -207,8 +207,45 @@ def _choose(current: Any, nxt: Any) -> Any:
     return nxt if nxt is not None else current
 
 
+# Transient signals are only meaningful while fresh; a parked/asleep vehicle's
+# event still carries the last driving value with an old per-field timestamp.
+_TRANSIENT_STALE_SECONDS = 300
+
+
+def _field_time(record: dict[str, Any]) -> datetime | None:
+    value = record.get("time")
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _apply_transient(
+    snapshot: Snapshot,
+    attr: str,
+    record: dict[str, Any],
+    value: float | None,
+    now: datetime,
+) -> None:
+    """Apply a transient field only if its event timestamp is fresh.
+
+    present & fresh -> value; present & stale -> None; absent -> left unchanged.
+    """
+    if not record:
+        return
+    field_time = _field_time(record)
+    fresh = (
+        field_time is not None
+        and (now - field_time).total_seconds() <= _TRANSIENT_STALE_SECONDS
+    )
+    setattr(snapshot, attr, value if fresh else None)
+
+
 def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     """Merge a decoded SSE event onto the snapshot."""
+    now = datetime.now(timezone.utc)
     snapshot.battery_capacity_kwh = _choose(
         snapshot.battery_capacity_kwh,
         _scale(_rec(event, "batteryCapacity"), "wh", 1000),
@@ -223,7 +260,8 @@ def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
         snapshot.charging_energy_added_kwh,
         _scale(_rec(event, "chargingEnergyAdded"), "wh", 1000),
     )
-    snapshot.current_a = _choose(snapshot.current_a, _num(_rec(event, "current"), "a"))
+    current = _rec(event, "current")
+    _apply_transient(snapshot, "current_a", current, _num(current, "a"), now)
     snapshot.estimated_range_km = _choose(
         snapshot.estimated_range_km,
         _scale(_rec(event, "estimatedBatteryRange"), "m", 1000),
@@ -231,9 +269,8 @@ def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     snapshot.ext_temp_c = _choose(
         snapshot.ext_temp_c, _num(_rec(event, "externalTemperature"), "c")
     )
-    snapshot.heading_deg = _choose(
-        snapshot.heading_deg, _num(_rec(event, "heading"), "degrees")
-    )
+    heading = _rec(event, "heading")
+    _apply_transient(snapshot, "heading_deg", heading, _num(heading, "degrees"), now)
     snapshot.hvac_power_kw = _choose(
         snapshot.hvac_power_kw, _scale(_rec(event, "hvacPower"), "w", 1000)
     )
@@ -243,18 +280,17 @@ def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     snapshot.odometer_km = _choose(
         snapshot.odometer_km, _scale(_rec(event, "odometer"), "m", 1000)
     )
-    snapshot.power_kw = _choose(
-        snapshot.power_kw, _scale(_rec(event, "power"), "w", 1000)
-    )
+    power = _rec(event, "power")
+    _apply_transient(snapshot, "power_kw", power, _scale(power, "w", 1000), now)
     # soc.frac is a 0..1 fraction; /0.01 converts it to a percentage.
     snapshot.soc_percent = _choose(
         snapshot.soc_percent, _scale(_rec(event, "soc"), "frac", 0.01)
     )
     # speed.ms is metres/second; /(1/3.6) converts to km/h.
-    snapshot.speed_kmh = _choose(
-        snapshot.speed_kmh, _scale(_rec(event, "speed"), "ms", 1 / 3.6)
-    )
-    snapshot.voltage_v = _choose(snapshot.voltage_v, _num(_rec(event, "voltage"), "v"))
+    speed = _rec(event, "speed")
+    _apply_transient(snapshot, "speed_kmh", speed, _scale(speed, "ms", 1 / 3.6), now)
+    voltage = _rec(event, "voltage")
+    _apply_transient(snapshot, "voltage_v", voltage, _num(voltage, "v"), now)
 
     charging_state = _rec(event, "chargingState").get("state")
     if isinstance(charging_state, str):
