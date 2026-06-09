@@ -20,6 +20,7 @@ from .const import (
     GET_SESSION_URL,
     GET_TLM_URL,
     SET_SETTINGS_URL,
+    SET_VEHICLE_DATA_URL,
     web_request_headers,
 )
 from .metadata import AbrpMetadata
@@ -46,6 +47,8 @@ class Vehicle:
     car_model: str | None = None
     paint: str | None = None
     active_config: str | None = None
+    # config id -> {"name": ..., "config_type": ...}
+    configurations: dict[str, Any] = field(default_factory=dict)
     tlm_type: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -171,6 +174,33 @@ class AbrpApi:
         if response.get("status") != "ok":
             raise AbrpApiError(f"set_settings returned {response.get('status')!r}")
 
+    async def set_active_config(
+        self, access_token: str, vehicle: dict[str, Any], config_id: str
+    ) -> None:
+        """Switch a vehicle's active drive-profile configuration.
+
+        ``vehicle`` is the raw get_tlm vehicle object; its current data is sent
+        back unchanged except for the active configuration.
+        """
+        body = {
+            "wait": True,
+            "session_id": access_token,
+            "vehicle_id": vehicle["vehicle_id"],
+            "car_model": vehicle.get("car_model"),
+            "configurations": vehicle.get("configurations"),
+            "settings": vehicle.get("vehicle_settings"),
+            "always_log": vehicle.get("always_log"),
+            "active_config": config_id,
+            "config": config_id,
+            "name": vehicle.get("name"),
+            "paint": vehicle.get("paint"),
+        }
+        response = await self._post(
+            SET_VEHICLE_DATA_URL, body, web_request_headers(self._metadata.api_key)
+        )
+        if response.get("status") != "ok":
+            raise AbrpApiError(f"set_vehicle_data returned {response.get('status')!r}")
+
 
 # --- normalization helpers ------------------------------------------------
 
@@ -212,6 +242,7 @@ def _normalize_vehicle(item: dict[str, Any]) -> Vehicle:
         car_model=_as_str(item.get("car_model")),
         paint=_as_str(item.get("paint")),
         active_config=_as_str(item.get("active_config")),
+        configurations=_as_dict(item.get("configurations")),
         tlm_type=_as_str(item.get("tlm_type")),
         raw=item,
     )

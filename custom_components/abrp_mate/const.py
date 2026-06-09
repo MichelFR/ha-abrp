@@ -11,6 +11,7 @@ ABRP_HOME_URL = "https://abetterrouteplanner.com/"
 GET_TLM_URL = "https://api.iternio.com/1/session/get_tlm"
 GET_SESSION_URL = "https://api.iternio.com/1/session/get_session"
 SET_SETTINGS_URL = "https://api.iternio.com/1/session/set_settings"
+SET_VEHICLE_DATA_URL = "https://api.iternio.com/1/vehicles/set_vehicle_data"
 TLM_EVENTS_URL = "https://api.iternio.com/2/tlm"
 
 # get_session body needs these alongside the session id.

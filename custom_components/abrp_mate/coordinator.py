@@ -114,6 +114,19 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         self.settings = {**self.settings, key: value}
         self.async_update_listeners()
 
+    async def async_set_active_config(self, vehicle_id: int, config_id: str) -> None:
+        """Switch a vehicle's active drive-profile configuration."""
+        vehicle = self.vehicles.get(vehicle_id)
+        if vehicle is None:
+            raise HomeAssistantError(f"Unknown vehicle {vehicle_id}")
+        api = await self._async_ensure_api()
+        access_token = await self.tokens.async_get_token()
+        try:
+            await api.set_active_config(access_token, vehicle.raw, config_id)
+        except AbrpApiError as err:
+            raise HomeAssistantError(f"Failed to set drive profile: {err}") from err
+        await self.async_request_refresh()
+
     def _handle_stream_snapshot(self, snapshot: Snapshot) -> None:
         """Apply a realtime snapshot pushed by the SSE stream."""
         data = dict(self.data or {})

@@ -67,6 +67,9 @@
           "fewer": "Fewer",
           "fewest": "Fewest"
         }
+      },
+      "drive_profile": {
+        "name": "Drive profile"
       }
     }
   }
