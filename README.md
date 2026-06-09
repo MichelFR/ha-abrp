@@ -3,9 +3,17 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
 A Home Assistant custom integration for [A Better Route Planner](https://abetterrouteplanner.com)
-(ABRP). It connects to your ABRP account and exposes each vehicle as a device
-with live telemetry — state of charge, power, speed, odometer, range,
-temperatures, charging state and location.
+(ABRP).
+
+> **This integration reads data *from* ABRP — it does not send anything to it.**
+> It is the opposite of the well-known "send telemetry to ABRP" setups. Instead,
+> it takes the live telemetry your vehicle already reports to ABRP — whether via
+> an OBD2 dongle or a connected cloud provider (Tesla, Enode, etc.) — and shows
+> it as Home Assistant entities, in realtime, just like the ABRP app does.
+
+It connects to your ABRP account and exposes each vehicle as a device with live
+telemetry — state of charge, power, speed, odometer, range, temperatures,
+charging state and location.
 
 ## Features
 
