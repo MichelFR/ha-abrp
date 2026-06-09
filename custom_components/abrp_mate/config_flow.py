@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
+from uuid import uuid4
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
@@ -25,6 +26,7 @@ from .const import (
     SESSION_POLL_ATTEMPTS,
     SESSION_POLL_INTERVAL_SECONDS,
 )
+from .metadata import async_get_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,13 +38,22 @@ class AbrpMateConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._pending: PendingSession | None = None
+        self._api: AbrpApi | None = None
+
+    async def _get_api(self) -> AbrpApi:
+        """Build the API client once, with discovered metadata + device id."""
+        if self._api is None:
+            session = async_get_clientsession(self.hass)
+            metadata = await async_get_metadata(session)
+            self._api = AbrpApi(session, metadata, device_id=uuid4().hex)
+        return self._api
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Create a pending session and show the connect link."""
         errors: dict[str, str] = {}
-        api = AbrpApi(async_get_clientsession(self.hass))
+        api = await self._get_api()
 
         if self._pending is None:
             try:

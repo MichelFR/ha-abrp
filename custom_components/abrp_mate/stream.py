@@ -18,7 +18,8 @@ from typing import Any
 import aiohttp
 
 from .api import Snapshot
-from .const import TLM_EVENTS_URL, TLM_STREAM_HEADERS
+from .const import TLM_EVENTS_URL, stream_headers
+from .metadata import AbrpMetadata
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,12 +36,14 @@ class AbrpLiveStream:
     def __init__(
         self,
         session: aiohttp.ClientSession,
+        metadata: AbrpMetadata,
         session_id: str,
         vehicle_id: int,
         on_snapshot: SnapshotCallback,
         seed: Snapshot | None = None,
     ) -> None:
         self._session = session
+        self._metadata = metadata
         self._session_id = session_id
         self._vehicle_id = vehicle_id
         self._on_snapshot = on_snapshot
@@ -86,7 +89,9 @@ class AbrpLiveStream:
             backoff = min(backoff * 2, _RECONNECT_MAX)
 
     async def _consume(self) -> None:
-        headers = {**TLM_STREAM_HEADERS, "x-abrp-session": self._session_id}
+        headers = stream_headers(
+            self._metadata.api_key, self._metadata.app_version, self._session_id
+        )
         url = f"{TLM_EVENTS_URL}?vehicleIds={self._vehicle_id}"
         async with self._session.get(headers=headers, url=url) as response:
             response.raise_for_status()

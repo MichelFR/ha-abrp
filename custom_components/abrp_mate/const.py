@@ -6,10 +6,8 @@ from datetime import timedelta
 
 DOMAIN = "abrp_mate"
 
-# --- ABRP / Iternio API constants ---
-API_KEY = "f4128c06-5e39-4852-95f9-3286712a9f3a"
-V1_AUTHORIZATION_HEADER = f"APIKEY {API_KEY}"
-
+# --- ABRP / Iternio endpoints ---
+ABRP_HOME_URL = "https://abetterrouteplanner.com/"
 NEW_SESSION_URL = "https://api.iternio.com/1/session/new_session"
 CONNECT_SESSION_REQUEST_URL = (
     "https://api.iternio.com/1/session/connect_session_request"
@@ -17,47 +15,63 @@ CONNECT_SESSION_REQUEST_URL = (
 GET_SESSION_URL = "https://api.iternio.com/1/session/get_session"
 GET_TLM_URL = "https://api.iternio.com/1/session/get_tlm"
 TLM_EVENTS_URL = "https://api.iternio.com/2/tlm"
-
 ABRP_CONNECT_SESSION_URL_PREFIX = (
     "https://abetterrouteplanner.com/?connect_session_token="
 )
-ABRP_CLIENT = "abrp-web"
-ABRP_VERSION = 5800
-ABRP_COUNTRY_3 = "DEU"
-ABRP_APP_VERSION = "7.0.5"
 
+# --- Genuinely static values (literal in the ABRP web app) ---
+ABRP_CLIENT = "abrp-web"
+ABRP_COUNTRY_3 = "DEU"
 DEFAULT_PLATFORM = "web"
-DEFAULT_DEVICE_ID = "ad921d60486366258809553a3db49a4a"
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 )
 
-# Web request headers shared by the ABRP JSON endpoints.
-ABRP_WEB_REQUEST_HEADERS = {
-    "accept": "application/json, text/plain, */*",
-    "accept-language": "en-US,en;q=0.9,de-DE;q=0.8,de;q=0.7",
-    "authorization": V1_AUTHORIZATION_HEADER,
-    "cache-control": "no-cache",
-    "content-type": "application/json",
-    "origin": "https://abetterrouteplanner.com",
-    "pragma": "no-cache",
-    "referer": "https://abetterrouteplanner.com/",
-    "user-agent": USER_AGENT,
-}
+# --- Dynamic values, scraped from the web app at runtime (see metadata.py) ---
+# These are extracted from the ABRP web bundle; the values below are the
+# last-known-good fallbacks used if scraping fails. Keep them current.
+FALLBACK_API_KEY = "f4128c06-5e39-4852-95f9-3286712a9f3a"
+FALLBACK_APP_VERSION = "7.1.2"
+FALLBACK_APP_BUILD_NUMBER = "5875"
 
-# Server-sent-events stream headers (the /2/tlm realtime endpoint).
-TLM_STREAM_HEADERS = {
-    "accept": "text/event-stream",
-    "cache-control": "no-cache",
-    "origin": "https://abetterrouteplanner.com",
-    "pragma": "no-cache",
-    "referer": "https://abetterrouteplanner.com/",
-    "x-abrp-version": ABRP_APP_VERSION,
-    "x-api-key": API_KEY,
-    "x-requested-with": "XMLHttpRequest",
-}
+# How long a scraped metadata result stays cached before it is refreshed.
+METADATA_TTL = timedelta(hours=6)
+# Stop scanning the web bundle after this many bytes (the values sit in the
+# first few MB; this caps the download of the ~20 MB bundle).
+METADATA_SCAN_LIMIT_BYTES = 8 * 1024 * 1024
+
+
+def web_request_headers(api_key: str) -> dict[str, str]:
+    """Headers shared by the ABRP JSON endpoints."""
+    return {
+        "accept": "application/json, text/plain, */*",
+        "accept-language": "en-US,en;q=0.9,de-DE;q=0.8,de;q=0.7",
+        "authorization": f"APIKEY {api_key}",
+        "cache-control": "no-cache",
+        "content-type": "application/json",
+        "origin": "https://abetterrouteplanner.com",
+        "pragma": "no-cache",
+        "referer": "https://abetterrouteplanner.com/",
+        "user-agent": USER_AGENT,
+    }
+
+
+def stream_headers(api_key: str, app_version: str, session_id: str) -> dict[str, str]:
+    """Headers for the /2/tlm realtime server-sent-events endpoint."""
+    return {
+        "accept": "text/event-stream",
+        "cache-control": "no-cache",
+        "origin": "https://abetterrouteplanner.com",
+        "pragma": "no-cache",
+        "referer": "https://abetterrouteplanner.com/",
+        "x-abrp-session": session_id,
+        "x-abrp-version": app_version,
+        "x-api-key": api_key,
+        "x-requested-with": "XMLHttpRequest",
+    }
+
 
 # --- Integration config ---
 CONF_SESSION_ID = "session_id"

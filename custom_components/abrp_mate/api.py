@@ -20,16 +20,14 @@ from .const import (
     ABRP_CLIENT,
     ABRP_CONNECT_SESSION_URL_PREFIX,
     ABRP_COUNTRY_3,
-    ABRP_VERSION,
-    ABRP_WEB_REQUEST_HEADERS,
     CONNECT_SESSION_REQUEST_URL,
-    DEFAULT_DEVICE_ID,
     DEFAULT_PLATFORM,
     GET_SESSION_URL,
     GET_TLM_URL,
     NEW_SESSION_URL,
-    V1_AUTHORIZATION_HEADER,
+    web_request_headers,
 )
+from .metadata import AbrpMetadata
 
 
 class AbrpApiError(Exception):
@@ -106,8 +104,19 @@ class VehicleRefresh:
 class AbrpApi:
     """Thin async wrapper around the ABRP JSON endpoints."""
 
-    def __init__(self, session: aiohttp.ClientSession) -> None:
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        metadata: AbrpMetadata,
+        device_id: str,
+    ) -> None:
         self._session = session
+        self._metadata = metadata
+        self._device_id = device_id
+
+    @property
+    def _headers(self) -> dict[str, str]:
+        return web_request_headers(self._metadata.api_key)
 
     async def _post(
         self, url: str, body: dict[str, Any], headers: dict[str, str]
@@ -125,8 +134,8 @@ class AbrpApi:
         """Start a login: create a session and request a connect link."""
         new_session = await self._post(
             NEW_SESSION_URL,
-            {"platform": DEFAULT_PLATFORM, "device_id": DEFAULT_DEVICE_ID},
-            {"authorization": V1_AUTHORIZATION_HEADER},
+            {"platform": DEFAULT_PLATFORM, "device_id": self._device_id},
+            {"authorization": f"APIKEY {self._metadata.api_key}"},
         )
         if new_session.get("status") != "ok":
             raise AbrpApiError(
@@ -137,7 +146,7 @@ class AbrpApi:
         connect = await self._post(
             CONNECT_SESSION_REQUEST_URL,
             {"session_id": session_id},
-            ABRP_WEB_REQUEST_HEADERS,
+            self._headers,
         )
         if connect.get("status") != "ok":
             raise AbrpApiError(
@@ -158,10 +167,10 @@ class AbrpApi:
             {
                 "session_id": session_id,
                 "client": ABRP_CLIENT,
-                "version": ABRP_VERSION,
+                "version": self._metadata.app_build_number,
                 "country_3": ABRP_COUNTRY_3,
             },
-            ABRP_WEB_REQUEST_HEADERS,
+            self._headers,
         )
         if response.get("status") != "ok":
             raise AbrpApiError(
@@ -178,7 +187,7 @@ class AbrpApi:
 
     async def refresh_vehicles(self, session_id: str) -> VehicleRefresh:
         """Fetch vehicle metadata and the latest telemetry snapshot."""
-        headers = {**ABRP_WEB_REQUEST_HEADERS, "accept": "*/*"}
+        headers = {**self._headers, "accept": "*/*"}
         response = await self._post(GET_TLM_URL, {"session_id": session_id}, headers)
         if response.get("status") != "ok":
             raise AbrpApiError(f"get_tlm returned status {response.get('status')!r}")

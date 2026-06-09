@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from uuid import uuid4
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -11,6 +12,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import AbrpApi, AbrpApiError, Snapshot, Vehicle
 from .const import CONF_SESSION_ID, DEFAULT_POLL_INTERVAL, DOMAIN
+from .metadata import AbrpMetadata, async_get_metadata
 from .stream import AbrpLiveStream
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,13 +35,23 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         self.entry = entry
         self.session_id: str = entry.data[CONF_SESSION_ID]
         self._client = async_get_clientsession(hass)
-        self.api = AbrpApi(self._client)
+        self.metadata: AbrpMetadata | None = None
+        self.api: AbrpApi | None = None
         self.vehicles: dict[int, Vehicle] = {}
         self._streams: dict[int, AbrpLiveStream] = {}
 
+    async def _async_ensure_api(self) -> AbrpApi:
+        """Discover ABRP metadata and build the API client (once)."""
+        if self.api is None:
+            self.metadata = await async_get_metadata(self._client)
+            # device_id is only used during login; an ephemeral one is fine here.
+            self.api = AbrpApi(self._client, self.metadata, device_id=uuid4().hex)
+        return self.api
+
     async def _async_update_data(self) -> dict[int, Snapshot]:
+        api = await self._async_ensure_api()
         try:
-            refresh = await self.api.refresh_vehicles(self.session_id)
+            refresh = await api.refresh_vehicles(self.session_id)
         except AbrpApiError as err:
             raise UpdateFailed(str(err)) from err
 
@@ -61,8 +73,10 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         for vehicle_id, snapshot in snapshots.items():
             if vehicle_id in self._streams:
                 continue
+            assert self.metadata is not None  # set by _async_ensure_api
             stream = AbrpLiveStream(
                 self._client,
+                self.metadata,
                 self.session_id,
                 vehicle_id,
                 self._handle_stream_snapshot,
