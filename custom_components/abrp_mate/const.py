@@ -6,23 +6,27 @@ from datetime import timedelta
 
 DOMAIN = "abrp_mate"
 
-# --- ABRP / Iternio endpoints ---
+# --- ABRP / Iternio telemetry endpoints ---
 ABRP_HOME_URL = "https://abetterrouteplanner.com/"
-NEW_SESSION_URL = "https://api.iternio.com/1/session/new_session"
-CONNECT_SESSION_REQUEST_URL = (
-    "https://api.iternio.com/1/session/connect_session_request"
-)
-GET_SESSION_URL = "https://api.iternio.com/1/session/get_session"
 GET_TLM_URL = "https://api.iternio.com/1/session/get_tlm"
 TLM_EVENTS_URL = "https://api.iternio.com/2/tlm"
+
+# --- ABRP accounts (OAuth2 + QR "remote app" login) ---
+# ABRP migrated auth to an OAuth2/OIDC service. Login: open a connect link on a
+# device already signed in to ABRP, approve it, exchange the resulting code for
+# tokens. The OAuth access_token is then used directly as the iternio
+# ``session_id`` for the telemetry API.
+ACCOUNTS_BASE_URL = "https://accounts.abetterrouteplanner.com"
+OAUTH_AUTHORIZE_URL = f"{ACCOUNTS_BASE_URL}/authorize"
+OAUTH_TOKEN_URL = f"{ACCOUNTS_BASE_URL}/token"
+LOGIN_ABRP_URL = f"{ACCOUNTS_BASE_URL}/login/abrp"
+LOGIN_ABRP_STATUS_URL = f"{ACCOUNTS_BASE_URL}/login/abrp/status"
+OAUTH_CLIENT_ID = "app"
+OAUTH_REDIRECT_URI = "https://abetterrouteplanner.com/abrpAuthRedirect"
+OAUTH_SCOPE = "oidc profile email offline_access"
 ABRP_CONNECT_SESSION_URL_PREFIX = (
     "https://abetterrouteplanner.com/?connect_session_token="
 )
-
-# --- Genuinely static values (literal in the ABRP web app) ---
-ABRP_CLIENT = "abrp-web"
-ABRP_COUNTRY_3 = "DEU"
-DEFAULT_PLATFORM = "web"
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -74,8 +78,9 @@ def stream_headers(api_key: str, app_version: str, session_id: str) -> dict[str,
 
 
 # --- Integration config ---
-CONF_SESSION_ID = "session_id"
-CONF_VEHICLE_ID = "vehicle_id"
+# The long-lived (rotating) OAuth refresh token is what we persist; access
+# tokens are short-lived and fetched on demand.
+CONF_REFRESH_TOKEN = "refresh_token"
 
 PLATFORMS = ["sensor", "binary_sensor", "device_tracker"]
 
@@ -83,7 +88,7 @@ PLATFORMS = ["sensor", "binary_sensor", "device_tracker"]
 # stream pushes updates more frequently when the vehicle is active.
 DEFAULT_POLL_INTERVAL = timedelta(seconds=30)
 
-# Number of times the config flow polls get_session while waiting for the
+# Number of times the config flow polls login/abrp/status while waiting for the
 # user to approve the connect link, and the delay between polls.
 # Runs in the background, so a generous window (90 * 2s = 3 min) is fine.
 SESSION_POLL_ATTEMPTS = 90

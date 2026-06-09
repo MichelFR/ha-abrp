@@ -1,11 +1,9 @@
-"""Async client for the ABRP / Iternio API.
+"""Async client for the ABRP / Iternio telemetry API.
 
-It covers two slices of functionality:
-
-* **Auth** — the connect-session ("QR") login flow:
-  ``new_session`` -> ``connect_session_request`` -> poll ``get_session``.
-* **Base + realtime data** — vehicle metadata and the latest telemetry
-  snapshot via ``get_tlm`` (the live SSE stream lives in ``stream.py``).
+Fetches vehicle metadata and the latest telemetry snapshot via ``get_tlm``
+(the live SSE stream lives in ``stream.py``). Authentication is handled by
+``oauth.py`` / ``token_manager.py``; the OAuth access token is passed here as
+the ``session_id``.
 """
 
 from __future__ import annotations
@@ -16,31 +14,12 @@ from typing import Any
 
 import aiohttp
 
-from .const import (
-    ABRP_CLIENT,
-    ABRP_CONNECT_SESSION_URL_PREFIX,
-    ABRP_COUNTRY_3,
-    CONNECT_SESSION_REQUEST_URL,
-    DEFAULT_PLATFORM,
-    GET_SESSION_URL,
-    GET_TLM_URL,
-    NEW_SESSION_URL,
-    web_request_headers,
-)
+from .const import GET_TLM_URL, web_request_headers
 from .metadata import AbrpMetadata
 
 
 class AbrpApiError(Exception):
     """Raised when the ABRP API returns an error or unexpected payload."""
-
-
-@dataclass
-class PendingSession:
-    """A session that is waiting for the user to approve the connect link."""
-
-    session_id: str
-    connect_token: str
-    connect_url: str
 
 
 @dataclass
@@ -102,21 +81,11 @@ class VehicleRefresh:
 
 
 class AbrpApi:
-    """Thin async wrapper around the ABRP JSON endpoints."""
+    """Thin async wrapper around the ABRP telemetry API."""
 
-    def __init__(
-        self,
-        session: aiohttp.ClientSession,
-        metadata: AbrpMetadata,
-        device_id: str,
-    ) -> None:
+    def __init__(self, session: aiohttp.ClientSession, metadata: AbrpMetadata) -> None:
         self._session = session
         self._metadata = metadata
-        self._device_id = device_id
-
-    @property
-    def _headers(self) -> dict[str, str]:
-        return web_request_headers(self._metadata.api_key)
 
     async def _post(
         self, url: str, body: dict[str, Any], headers: dict[str, str]
@@ -128,67 +97,13 @@ class AbrpApi:
         except aiohttp.ClientError as err:
             raise AbrpApiError(f"ABRP request to {url} failed: {err}") from err
 
-    # -- Auth: connect-session ("QR") login flow ---------------------------
+    async def refresh_vehicles(self, access_token: str) -> VehicleRefresh:
+        """Fetch vehicle metadata and the latest telemetry snapshot.
 
-    async def create_pending_session(self) -> PendingSession:
-        """Start a login: create a session and request a connect link."""
-        new_session = await self._post(
-            NEW_SESSION_URL,
-            {"platform": DEFAULT_PLATFORM, "device_id": self._device_id},
-            {"authorization": f"APIKEY {self._metadata.api_key}"},
-        )
-        if new_session.get("status") != "ok":
-            raise AbrpApiError(
-                f"new_session returned status {new_session.get('status')!r}"
-            )
-        session_id = new_session["result"]
-
-        connect = await self._post(
-            CONNECT_SESSION_REQUEST_URL,
-            {"session_id": session_id},
-            self._headers,
-        )
-        if connect.get("status") != "ok":
-            raise AbrpApiError(
-                f"connect_session_request returned status {connect.get('status')!r}"
-            )
-        token = connect["result"]["token"]
-
-        return PendingSession(
-            session_id=session_id,
-            connect_token=token,
-            connect_url=f"{ABRP_CONNECT_SESSION_URL_PREFIX}{token}",
-        )
-
-    async def get_session_state(self, session_id: str) -> dict[str, Any] | None:
-        """Return the authenticated session payload, or ``None`` if pending."""
-        response = await self._post(
-            GET_SESSION_URL,
-            {
-                "session_id": session_id,
-                "client": ABRP_CLIENT,
-                "version": self._metadata.app_build_number,
-                "country_3": ABRP_COUNTRY_3,
-            },
-            self._headers,
-        )
-        if response.get("status") != "ok":
-            raise AbrpApiError(
-                f"get_session returned status {response.get('status')!r}"
-            )
-
-        result = response.get("result") or {}
-        if not result:
-            # Empty result means the connect link has not been approved yet.
-            return None
-        return result
-
-    # -- Base + realtime data: get_tlm -------------------------------------
-
-    async def refresh_vehicles(self, session_id: str) -> VehicleRefresh:
-        """Fetch vehicle metadata and the latest telemetry snapshot."""
-        headers = {**self._headers, "accept": "*/*"}
-        response = await self._post(GET_TLM_URL, {"session_id": session_id}, headers)
+        The OAuth ``access_token`` is used directly as the iternio session id.
+        """
+        headers = {**web_request_headers(self._metadata.api_key), "accept": "*/*"}
+        response = await self._post(GET_TLM_URL, {"session_id": access_token}, headers)
         if response.get("status") != "ok":
             raise AbrpApiError(f"get_tlm returned status {response.get('status')!r}")
 

@@ -12,7 +12,9 @@
     "abort": {
       "cannot_connect": "Failed to connect to ABRP.",
       "not_authorized": "The connection was not approved in time. Please start again.",
-      "already_configured": "This ABRP account is already configured."
+      "already_configured": "This ABRP account is already configured.",
+      "wrong_account": "The approved account does not match the one being re-authenticated.",
+      "reauth_successful": "Re-authentication was successful."
     }
   },
   "entity": {

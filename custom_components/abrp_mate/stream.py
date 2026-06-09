@@ -28,6 +28,7 @@ _RECONNECT_MIN = 5
 _RECONNECT_MAX = 60
 
 SnapshotCallback = Callable[[Snapshot], Awaitable[None] | None]
+TokenProvider = Callable[[], Awaitable[str]]
 
 
 class AbrpLiveStream:
@@ -37,14 +38,14 @@ class AbrpLiveStream:
         self,
         session: aiohttp.ClientSession,
         metadata: AbrpMetadata,
-        session_id: str,
+        token_provider: TokenProvider,
         vehicle_id: int,
         on_snapshot: SnapshotCallback,
         seed: Snapshot | None = None,
     ) -> None:
         self._session = session
         self._metadata = metadata
-        self._session_id = session_id
+        self._token_provider = token_provider
         self._vehicle_id = vehicle_id
         self._on_snapshot = on_snapshot
         self._current = seed
@@ -89,8 +90,11 @@ class AbrpLiveStream:
             backoff = min(backoff * 2, _RECONNECT_MAX)
 
     async def _consume(self) -> None:
+        # Fetch a fresh access token for each (re)connect; it is used as the
+        # iternio session id and expires every ~15 minutes.
+        access_token = await self._token_provider()
         headers = stream_headers(
-            self._metadata.api_key, self._metadata.app_version, self._session_id
+            self._metadata.api_key, self._metadata.app_version, access_token
         )
         url = f"{TLM_EVENTS_URL}?vehicleIds={self._vehicle_id}"
         async with self._session.get(headers=headers, url=url) as response:
