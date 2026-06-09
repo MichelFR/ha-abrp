@@ -41,4 +41,9 @@ class AbrpArrivalSocNumber(AbrpMateAccountEntity, NumberEntity):
         return float(value) if isinstance(value, (int, float)) else None
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.async_set_setting(SETTING_ARRIVAL_SOC, int(value))
+        soc = int(value)
+        # ABRP mirrors arrival SoC into a legacy string key (arrivalcharge)
+        # that the mobile app reads; write both so all clients stay in sync.
+        await self.coordinator.async_set_settings(
+            {SETTING_ARRIVAL_SOC: soc, "arrivalcharge": str(soc)}
+        )

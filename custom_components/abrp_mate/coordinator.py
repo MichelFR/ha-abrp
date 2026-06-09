@@ -101,18 +101,20 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
             self._streams[vehicle_id] = stream
             stream.start()
 
-    async def async_set_setting(self, key: str, value: Any) -> None:
-        """Update a single account planning setting and reflect it locally."""
+    async def async_set_settings(self, changes: dict[str, Any]) -> None:
+        """Update one or more account planning settings and reflect them locally."""
         api = await self._async_ensure_api()
         access_token = await self.tokens.async_get_token()
         try:
-            await api.set_settings(access_token, {key: value})
+            await api.set_settings(access_token, changes)
         except AbrpApiError as err:
-            raise HomeAssistantError(
-                f"Failed to update ABRP setting {key}: {err}"
-            ) from err
-        self.settings = {**self.settings, key: value}
+            raise HomeAssistantError(f"Failed to update ABRP settings: {err}") from err
+        self.settings = {**self.settings, **changes}
         self.async_update_listeners()
+
+    async def async_set_setting(self, key: str, value: Any) -> None:
+        """Update a single account planning setting."""
+        await self.async_set_settings({key: value})
 
     async def async_set_active_config(self, vehicle_id: int, config_id: str) -> None:
         """Switch a vehicle's active drive-profile configuration."""
