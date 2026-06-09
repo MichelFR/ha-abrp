@@ -27,6 +27,32 @@ class AbrpBinarySensorDescription(BinarySensorEntityDescription):
     value_fn: Callable[[Snapshot], bool | None]
 
 
+# Speed (non-GPS, live) above this counts as moving.
+_MOVING_KMH = 2.0
+
+
+def _derive_driving(s: Snapshot) -> bool | None:
+    """Driving state, explicit if ABRP reports it, otherwise inferred."""
+    if s.is_driving is not None:
+        return s.is_driving
+    if s.is_charging or s.is_asleep:
+        return False  # plugged-in or sleeping vehicles are not driving
+    if s.speed_kmh is not None:  # a live, non-GPS speed reading
+        return s.speed_kmh > _MOVING_KMH
+    return None  # not enough information
+
+
+def _derive_parked(s: Snapshot) -> bool | None:
+    """Parked state, explicit if ABRP reports it, otherwise inferred."""
+    if s.is_parked is not None:
+        return s.is_parked
+    if s.is_asleep or s.is_charging:
+        return True
+    if s.speed_kmh is not None:
+        return s.speed_kmh <= _MOVING_KMH
+    return None
+
+
 BINARY_SENSORS: tuple[AbrpBinarySensorDescription, ...] = (
     AbrpBinarySensorDescription(
         key="charging",
@@ -38,12 +64,12 @@ BINARY_SENSORS: tuple[AbrpBinarySensorDescription, ...] = (
         key="driving",
         translation_key="driving",
         device_class=BinarySensorDeviceClass.MOVING,
-        value_fn=lambda s: s.is_driving,
+        value_fn=_derive_driving,
     ),
     AbrpBinarySensorDescription(
         key="parked",
         translation_key="parked",
-        value_fn=lambda s: s.is_parked,
+        value_fn=_derive_parked,
     ),
     AbrpBinarySensorDescription(
         key="fast_charging",
