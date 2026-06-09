@@ -72,8 +72,9 @@ BINARY_SENSORS: tuple[AbrpBinarySensorDescription, ...] = (
         value_fn=_derive_parked,
     ),
     AbrpBinarySensorDescription(
-        key="fast_charging",
-        translation_key="fast_charging",
+        key="dc_charging",
+        translation_key="dc_charging",
+        device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
         value_fn=lambda s: s.is_dcfc,
     ),
     AbrpBinarySensorDescription(

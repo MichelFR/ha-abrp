@@ -42,7 +42,7 @@
       "charging": { "name": "Charging" },
       "driving": { "name": "Driving" },
       "parked": { "name": "Parked" },
-      "fast_charging": { "name": "DC fast charging" },
+      "dc_charging": { "name": "DC fast charging" },
       "online": { "name": "Online" },
       "asleep": { "name": "Asleep" },
       "cloud_connected": { "name": "Cloud connected" },
