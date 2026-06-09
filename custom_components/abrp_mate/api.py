@@ -68,6 +68,12 @@ class Snapshot:
     timezone: str | None = None
     country3: str | None = None
     charger_id: int | None = None
+    # Where ABRP's data comes from: tlm_type is the overall source
+    # (e.g. "enode", an OBD dongle, ...); providers maps each signal to its
+    # own source.
+    tlm_source: str | None = None
+    providers: dict[str, Any] | None = None
+    is_connected: bool | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -185,6 +191,8 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         cabin_temp_c=_as_float(tlm.get("cabin_temp")),
         batt_temp_c=_as_float(tlm.get("batt_temp")),
         vehicle_temp_c=_as_float(tlm.get("vehicle_temp")),
+        speed_kmh=_as_float(tlm.get("speed")),
+        estimated_range_km=_as_float(tlm.get("est_battery_range")),
         battery_capacity_kwh=_as_float(tlm.get("battery_capacity"))
         or _as_float(tlm.get("capacity")),
         charging_energy_added_kwh=_as_float(tlm.get("charge_energy_added"))
@@ -194,5 +202,10 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         charger_id=tlm.get("charger_id")
         if isinstance(tlm.get("charger_id"), int)
         else None,
+        tlm_source=_as_str(tlm.get("tlm_type")) or _as_str(item.get("ota_tlm_type")),
+        providers=tlm.get("providers")
+        if isinstance(tlm.get("providers"), dict)
+        else None,
+        is_connected=_as_bool(item.get("is_connected")),
         raw=item,
     )

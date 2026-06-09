@@ -29,7 +29,9 @@
       "charge_energy_added": { "name": "Charge energy added" },
       "external_temp": { "name": "External temperature" },
       "battery_temp": { "name": "Battery temperature" },
-      "cabin_temp": { "name": "Cabin temperature" }
+      "cabin_temp": { "name": "Cabin temperature" },
+      "last_update": { "name": "Last update" },
+      "data_source": { "name": "Data source" }
     },
     "binary_sensor": {
       "charging": { "name": "Charging" },

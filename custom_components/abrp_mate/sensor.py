@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -13,6 +15,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
+    EntityCategory,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
@@ -136,11 +139,15 @@ async def async_setup_entry(
 ) -> None:
     """Set up ABRP Mate sensors for all known vehicles."""
     coordinator = entry.runtime_data
-    async_add_entities(
-        AbrpMateSensor(coordinator, vehicle_id, description)
-        for vehicle_id in coordinator.data
-        for description in SENSORS
-    )
+    entities: list[SensorEntity] = []
+    for vehicle_id in coordinator.data:
+        entities.extend(
+            AbrpMateSensor(coordinator, vehicle_id, description)
+            for description in SENSORS
+        )
+        entities.append(AbrpMateLastUpdateSensor(coordinator, vehicle_id))
+        entities.append(AbrpMateDataSourceSensor(coordinator, vehicle_id))
+    async_add_entities(entities)
 
 
 class AbrpMateSensor(AbrpMateEntity, SensorEntity):
@@ -164,3 +171,44 @@ class AbrpMateSensor(AbrpMateEntity, SensorEntity):
         if snapshot is None:
             return None
         return self.entity_description.value_fn(snapshot)
+
+
+class AbrpMateLastUpdateSensor(AbrpMateEntity, SensorEntity):
+    """When ABRP last received telemetry for the vehicle."""
+
+    _attr_translation_key = "last_update"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
+        super().__init__(coordinator, vehicle_id)
+        self._attr_unique_id = f"{vehicle_id}_last_update"
+
+    @property
+    def native_value(self) -> datetime | None:
+        return self.snapshot.recorded_at if self.snapshot else None
+
+
+class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
+    """Which source ABRP's data is coming from (cloud provider, OBD, ...)."""
+
+    _attr_translation_key = "data_source"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
+        super().__init__(coordinator, vehicle_id)
+        self._attr_unique_id = f"{vehicle_id}_data_source"
+
+    @property
+    def native_value(self) -> str | None:
+        return self.snapshot.tlm_source if self.snapshot else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        snapshot = self.snapshot
+        if snapshot is None:
+            return None
+        return {
+            "connected": snapshot.is_connected,
+            "providers": snapshot.providers or {},
+        }
