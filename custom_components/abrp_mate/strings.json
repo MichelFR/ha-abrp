@@ -7,7 +7,7 @@
       }
     },
     "progress": {
-      "waiting_for_authorization": "Waiting for you to approve the connection in ABRP…"
+      "waiting_for_authorization": "Scan this QR code, or open the link below, in the A Better Route Planner app or a browser where you are signed in, then approve the connection. This page continues automatically once approved.\n\n{qr}\n\n[Open connection link]({connect_url})"
     },
     "abort": {
       "cannot_connect": "Failed to connect to ABRP.",
