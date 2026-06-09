@@ -43,6 +43,7 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         self.api: AbrpApi | None = None
         self.vehicles: dict[int, Vehicle] = {}
         self.settings: dict[str, Any] = {}
+        self._settings_version: int | None = None
         self._settings_fetched_at: float = 0.0
         self._streams: dict[int, AbrpLiveStream] = {}
 
@@ -63,12 +64,20 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
 
         self.vehicles = {vehicle.vehicle_id: vehicle for vehicle in refresh.vehicles}
 
-        # Refresh account settings occasionally so externally-made changes show.
-        if (time.monotonic() - self._settings_fetched_at) > (
+        # Re-fetch settings when their version bumps (changed on any device),
+        # so external edits sync within one poll. A long interval is a safety
+        # net in case a version change is ever missed.
+        version_changed = (
+            refresh.settings_version is not None
+            and refresh.settings_version != self._settings_version
+        )
+        stale = (time.monotonic() - self._settings_fetched_at) > (
             SETTINGS_REFRESH_INTERVAL.total_seconds()
-        ):
+        )
+        if not self.settings or version_changed or stale:
             try:
                 self.settings = await api.get_settings(access_token)
+                self._settings_version = refresh.settings_version
                 self._settings_fetched_at = time.monotonic()
             except AbrpApiError as err:
                 _LOGGER.debug("ABRP settings refresh failed: %s", err)
@@ -106,10 +115,14 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         api = await self._async_ensure_api()
         access_token = await self.tokens.async_get_token()
         try:
-            await api.set_settings(access_token, changes)
+            new_version = await api.set_settings(access_token, changes)
         except AbrpApiError as err:
             raise HomeAssistantError(f"Failed to update ABRP settings: {err}") from err
         self.settings = {**self.settings, **changes}
+        # Track the version from our own write so it isn't seen as an external
+        # change on the next poll.
+        if new_version is not None:
+            self._settings_version = new_version
         self.async_update_listeners()
 
     async def async_set_setting(self, key: str, value: Any) -> None:

@@ -108,6 +108,9 @@ class VehicleRefresh:
     fetched_at: datetime
     vehicles: list[Vehicle]
     snapshots: list[Snapshot]
+    # Bumps whenever account settings change (on any device); used to know
+    # when to re-fetch settings.
+    settings_version: int | None = None
 
 
 class AbrpApi:
@@ -140,10 +143,13 @@ class AbrpApi:
         result = response.get("result") or []
         vehicles = [_normalize_vehicle(item) for item in result]
         snapshots = [_normalize_snapshot(item) for item in result]
+        extra = response.get("extra") or {}
+        version = extra.get("settings_version")
         return VehicleRefresh(
             fetched_at=datetime.now(timezone.utc),
             vehicles=vehicles,
             snapshots=snapshots,
+            settings_version=version if isinstance(version, int) else None,
         )
 
     async def get_settings(self, access_token: str) -> dict[str, Any]:
@@ -164,8 +170,10 @@ class AbrpApi:
         settings = result.get("settings")
         return settings if isinstance(settings, dict) else {}
 
-    async def set_settings(self, access_token: str, changes: dict[str, Any]) -> None:
-        """Apply a partial update to the account's planning settings."""
+    async def set_settings(
+        self, access_token: str, changes: dict[str, Any]
+    ) -> int | None:
+        """Apply a partial update to settings; return the new settings_version."""
         response = await self._post(
             SET_SETTINGS_URL,
             {"session_id": access_token, "settings": changes},
@@ -173,6 +181,8 @@ class AbrpApi:
         )
         if response.get("status") != "ok":
             raise AbrpApiError(f"set_settings returned {response.get('status')!r}")
+        version = response.get("settings_version")
+        return version if isinstance(version, int) else None
 
     async def set_active_config(
         self, access_token: str, vehicle: dict[str, Any], config_id: str

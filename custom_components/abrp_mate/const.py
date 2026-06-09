@@ -97,8 +97,9 @@ SETTING_CHARGE_STOPS = "charge_stops"
 # ABRP's charge_stops values; "least" is shown as "Fewest" in the UI.
 CHARGE_STOPS_OPTIONS = ["optimal", "fewer", "least"]
 AVOID_SETTINGS = ("avoid_tolls", "avoid_ferries", "avoid_borders", "avoid_motorways")
-# Re-fetch account settings from ABRP at most this often during polling.
-SETTINGS_REFRESH_INTERVAL = timedelta(minutes=5)
+# Settings are normally re-fetched the moment their version bumps; this is just
+# a safety-net interval in case a version change is ever missed.
+SETTINGS_REFRESH_INTERVAL = timedelta(minutes=30)
 
 # How often the coordinator polls get_tlm as a baseline. The realtime SSE
 # stream pushes updates more frequently when the vehicle is active.
