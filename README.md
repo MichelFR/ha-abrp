@@ -5,24 +5,22 @@
 A Home Assistant custom integration for [A Better Route Planner](https://abetterrouteplanner.com)
 (ABRP).
 
-> **This integration reads data *from* ABRP — it does not send anything to it.**
-> It is the opposite of the well-known "send telemetry to ABRP" setups. Instead,
-> it takes the live telemetry your vehicle already reports to ABRP — whether via
-> an OBD2 dongle or a connected cloud provider (Tesla, Enode, etc.) — and shows
-> it as Home Assistant entities, in realtime, just like the ABRP app does.
-
-It connects to your ABRP account and exposes each vehicle as a device with live
-telemetry — state of charge, power, speed, odometer, range, temperatures,
-charging state and location.
+> **This integration reads your vehicle telemetry *from* ABRP — it does not push
+> telemetry to it.** It is the opposite of the well-known "send data to ABRP"
+> setups: it takes the live data your vehicle already reports to ABRP (via an
+> OBD2 dongle or a connected cloud provider such as Tesla or Enode) and shows it
+> as Home Assistant entities, just like the ABRP app. It can also read and edit
+> your ABRP **route-planning preferences** (these are settings, not telemetry).
 
 ## Features
 
-- One device per vehicle on your ABRP account.
-- Realtime telemetry via ABRP's live stream, with polling as a fallback.
-- Sensors: state of charge, power, speed, odometer, estimated range, voltage,
-  current, charge energy added, external/battery/cabin temperature.
-- Binary sensors: charging, driving, parked, fast charging.
-- Device tracker for the vehicle's GPS location.
+- One device per vehicle on your ABRP account, plus an account device for
+  planning preferences.
+- Realtime telemetry via ABRP's live stream, with adaptive polling as a
+  fallback (fast while the car is active, slow while it's parked).
+- Connection diagnostics (online / asleep, cloud vs. OBD) and the data source.
+- View **and edit** your route-planning preferences from Home Assistant.
+- QR-code login (OAuth2) — no password is entered or stored.
 
 ## Installation
 
@@ -41,27 +39,55 @@ charging state and location.
 
 1. Go to **Settings → Devices & Services → Add Integration** and search for
    **ABRP Mate**.
-2. Open the link shown in the dialog in a browser where you are signed in to
-   ABRP, approve the connection, then press **Submit**.
+2. **Scan the QR code** (or open the link) shown in the dialog on a device that
+   is signed in to ABRP, and approve the connection.
+3. That's it — the dialog continues **automatically** once approved (there is no
+   button to press), and your vehicles are discovered.
 
-The integration discovers your vehicles automatically once the connection is
-approved.
+If the stored login ever expires, Home Assistant prompts you to re-authenticate
+with the same QR step.
 
 ## Entities
 
-For each vehicle on the account:
+### Per vehicle
 
 | Type | Entities |
 | --- | --- |
-| Sensor | State of charge, power, speed, odometer, estimated range, voltage, current, charge energy added, external/battery/cabin temperature |
-| Binary sensor | Charging, driving, parked, fast charging |
-| Device tracker | Vehicle GPS location |
+| Sensor | State of charge, Power, Charging power, Speed, Odometer, Estimated range, Voltage, Current, Charge energy added, External / Battery / Cabin / Vehicle temperature, Reference consumption, Max speed, Weight, Last update, Data source |
+| Binary sensor | Charging, Driving, Parked, DC fast charging, Online, Asleep, Cloud connected, OBD connected |
+| Device tracker | GPS location (with heading, speed, country, timezone attributes) |
+| Select | Drive profile (the vehicle's ABRP configurations, e.g. Standard / winter tyres) |
+
+### Account ("ABRP Mate" device) — route-planning preferences
+
+| Type | Entities |
+| --- | --- |
+| Number | Destination SoC, Minimum charger stalls, Extra weight |
+| Switch | Avoid tolls, Avoid ferries, Avoid border crossings, Avoid motorways, Realtime traffic, Realtime weather, Adjust speed to limits |
+| Select | Charge stops (Optimal / Fewer / Fewest) |
+
+These are account-wide ABRP settings; changes made here sync to the ABRP app
+(and vice-versa) within a short interval.
+
+## How it works
+
+- **Login:** OAuth2 with a QR/connect link; only the (rotating) refresh token is
+  stored, and the access token is used to talk to ABRP's API.
+- **Telemetry:** a live server-sent-events stream delivers updates while the car
+  is active, backed by an adaptive `get_tlm` poll (faster when active, ~10 min
+  when idle).
+- **Settings:** read via `get_session`, written via `set_settings`, and kept in
+  sync near-realtime by watching ABRP's settings version.
 
 ## Notes
 
-- This integration uses ABRP's web API with a session you explicitly approve;
-  only your own account's vehicles are accessed.
-- There is no official public ABRP API, so endpoints may change without notice.
+- This integration uses ABRP's private web API with a session you explicitly
+  approve; only your own account's vehicles are accessed. There is no official
+  public ABRP API, so endpoints may change without notice.
+- Some values read **unknown** while the vehicle is asleep/parked (e.g. speed,
+  power, voltage) — ABRP only reports them while the car is active, and they
+  populate again once it is. Driving/parked is inferred from charging, sleep and
+  speed when ABRP doesn't report it directly.
 
 ## Disclaimer
 
