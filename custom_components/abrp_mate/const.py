@@ -94,7 +94,8 @@ PLATFORMS = ["sensor", "binary_sensor", "device_tracker", "number", "switch", "s
 # Account-level planning settings exposed as controls.
 SETTING_ARRIVAL_SOC = "arrival_soc"
 SETTING_CHARGE_STOPS = "charge_stops"
-CHARGE_STOPS_OPTIONS = ["optimal", "fewer", "fewest"]
+# ABRP's charge_stops values; "least" is shown as "Fewest" in the UI.
+CHARGE_STOPS_OPTIONS = ["optimal", "fewer", "least"]
 AVOID_SETTINGS = ("avoid_tolls", "avoid_ferries", "avoid_borders", "avoid_motorways")
 # Re-fetch account settings from ABRP at most this often during polling.
 SETTINGS_REFRESH_INTERVAL = timedelta(minutes=5)
