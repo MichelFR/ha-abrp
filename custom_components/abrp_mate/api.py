@@ -8,6 +8,7 @@ the ``session_id``.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -174,9 +175,12 @@ class AbrpApi:
         self, access_token: str, changes: dict[str, Any]
     ) -> int | None:
         """Apply a partial update to settings; return the new settings_version."""
+        # The web app stamps each change with a client time (ms) used for
+        # last-write-wins conflict resolution; include it so our changes win.
+        settings = {**changes, "settings_update_time": int(time.time() * 1000)}
         response = await self._post(
             SET_SETTINGS_URL,
-            {"session_id": access_token, "settings": changes},
+            {"session_id": access_token, "settings": settings},
             web_request_headers(self._metadata.api_key),
         )
         if response.get("status") != "ok":
@@ -185,25 +189,18 @@ class AbrpApi:
         return version if isinstance(version, int) else None
 
     async def set_active_config(
-        self, access_token: str, vehicle: dict[str, Any], config_id: str
+        self, access_token: str, vehicle_id: int, config_id: str
     ) -> None:
         """Switch a vehicle's active drive-profile configuration.
 
-        ``vehicle`` is the raw get_tlm vehicle object; its current data is sent
-        back unchanged except for the active configuration.
+        set_vehicle_data merges, so only the changed fields need to be sent.
         """
         body = {
             "wait": True,
             "session_id": access_token,
-            "vehicle_id": vehicle["vehicle_id"],
-            "car_model": vehicle.get("car_model"),
-            "configurations": vehicle.get("configurations"),
-            "settings": vehicle.get("vehicle_settings"),
-            "always_log": vehicle.get("always_log"),
+            "vehicle_id": vehicle_id,
             "active_config": config_id,
             "config": config_id,
-            "name": vehicle.get("name"),
-            "paint": vehicle.get("paint"),
         }
         response = await self._post(
             SET_VEHICLE_DATA_URL, body, web_request_headers(self._metadata.api_key)

@@ -152,13 +152,10 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
 
     async def async_set_active_config(self, vehicle_id: int, config_id: str) -> None:
         """Switch a vehicle's active drive-profile configuration."""
-        vehicle = self.vehicles.get(vehicle_id)
-        if vehicle is None:
-            raise HomeAssistantError(f"Unknown vehicle {vehicle_id}")
         api = await self._async_ensure_api()
         access_token = await self.tokens.async_get_token()
         try:
-            await api.set_active_config(access_token, vehicle.raw, config_id)
+            await api.set_active_config(access_token, vehicle_id, config_id)
         except AbrpApiError as err:
             raise HomeAssistantError(f"Failed to set drive profile: {err}") from err
         await self.async_request_refresh()
