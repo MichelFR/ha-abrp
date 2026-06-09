@@ -17,6 +17,14 @@ import aiohttp
 from .const import GET_TLM_URL, web_request_headers
 from .metadata import AbrpMetadata
 
+# Transient signals (speed, power, ...) carry the per-field timestamp from when
+# they were last measured. ABRP only treats them as "live" while they keep up
+# with the newest telemetry; once a vehicle parks/sleeps they go stale (the last
+# value lingers for hours). We blank a transient field if its own timestamp lags
+# the newest telemetry (tlm.utc) by more than this, mirroring the ABRP app which
+# hides stale speed rather than showing the last driving value.
+_TRANSIENT_STALE_SECONDS = 300
+
 
 class AbrpApiError(Exception):
     """Raised when the ABRP API returns an error or unexpected payload."""
@@ -177,6 +185,18 @@ def _normalize_vehicle(item: dict[str, Any]) -> Vehicle:
 def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
     tlm = _as_dict(item.get("tlm"))
     location = _as_dict(tlm.get("location"))
+    timestamps = _as_dict(tlm.get("timestamps"))
+    reference_ts = _as_float(tlm.get("utc"))
+
+    def live(field: str, value: float | None) -> float | None:
+        """Blank a transient field if its timestamp lags the newest telemetry."""
+        if value is None or reference_ts is None:
+            return value
+        field_ts = _as_float(timestamps.get(field))
+        if field_ts is None:
+            return value
+        return value if (reference_ts - field_ts) <= _TRANSIENT_STALE_SECONDS else None
+
     return Snapshot(
         vehicle_id=item["vehicle_id"],
         source="get_tlm",
@@ -186,18 +206,21 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         is_driving=_as_bool(tlm.get("is_driving")),
         is_dcfc=_as_bool(tlm.get("is_dcfc")),
         is_parked=_as_bool(tlm.get("is_parked")),
-        power_kw=_as_float(tlm.get("power")),
+        power_kw=live("power", _as_float(tlm.get("power"))),
         voltage_v=_as_float(tlm.get("voltage")),
-        current_a=_as_float(tlm.get("current")),
+        current_a=live("current", _as_float(tlm.get("current"))),
         odometer_km=_as_float(tlm.get("odometer")),
         latitude=_as_float(tlm.get("lat")),
         longitude=_as_float(tlm.get("lon")),
-        heading_deg=_as_float(tlm.get("heading")),
+        heading_deg=live("heading", _as_float(tlm.get("heading"))),
         ext_temp_c=_as_float(tlm.get("ext_temp")),
         cabin_temp_c=_as_float(tlm.get("cabin_temp")),
         batt_temp_c=_as_float(tlm.get("batt_temp")),
         vehicle_temp_c=_as_float(tlm.get("vehicle_temp")),
-        speed_kmh=_as_float(tlm.get("speed")),
+        # ABRP also hides GPS-derived speed; only show a non-GPS live value.
+        speed_kmh=live("speed", _as_float(tlm.get("speed")))
+        if _as_dict(tlm.get("providers")).get("speed") != "gps"
+        else None,
         estimated_range_km=_as_float(tlm.get("est_battery_range")),
         battery_capacity_kwh=_as_float(tlm.get("battery_capacity"))
         or _as_float(tlm.get("capacity")),
