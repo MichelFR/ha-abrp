@@ -41,6 +41,15 @@ class AbrpSensorDescription(SensorEntityDescription):
     value_fn: Callable[[Snapshot], float | None]
 
 
+def _charging_power(snapshot: Snapshot) -> float | None:
+    """Charge rate (positive kW) while charging, 0 otherwise, None if unknown."""
+    if snapshot.is_charging is None:
+        return None
+    if not snapshot.is_charging:
+        return 0.0
+    return abs(snapshot.power_kw) if snapshot.power_kw is not None else None
+
+
 SENSORS: tuple[AbrpSensorDescription, ...] = (
     AbrpSensorDescription(
         key="soc",
@@ -57,6 +66,14 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: s.power_kw,
+    ),
+    AbrpSensorDescription(
+        key="charging_power",
+        translation_key="charging_power",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_charging_power,
     ),
     AbrpSensorDescription(
         key="speed",

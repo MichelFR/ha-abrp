@@ -21,6 +21,7 @@
     "sensor": {
       "soc": { "name": "State of charge" },
       "power": { "name": "Power" },
+      "charging_power": { "name": "Charging power" },
       "speed": { "name": "Speed" },
       "odometer": { "name": "Odometer" },
       "range": { "name": "Estimated range" },
