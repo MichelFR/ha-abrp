@@ -207,7 +207,7 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         is_dcfc=_as_bool(tlm.get("is_dcfc")),
         is_parked=_as_bool(tlm.get("is_parked")),
         power_kw=live("power", _as_float(tlm.get("power"))),
-        voltage_v=_as_float(tlm.get("voltage")),
+        voltage_v=live("voltage", _as_float(tlm.get("voltage"))),
         current_a=live("current", _as_float(tlm.get("current"))),
         odometer_km=_as_float(tlm.get("odometer")),
         latitude=_as_float(tlm.get("lat")),
