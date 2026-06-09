@@ -36,6 +36,13 @@ For each vehicle on the account:
 - **Binary sensors:** charging, driving, parked, fast charging.
 - **Device tracker:** vehicle GPS location.
 
+## Branding
+
+The ABRP logo shown for this integration comes from Home Assistant's central
+brands CDN, not from this repo. Ready-to-submit icon assets (256×256 and
+512×512) live in [`brands/`](brands/) — see [`brands/README.md`](brands/README.md)
+for how to publish them to [`home-assistant/brands`](https://github.com/home-assistant/brands).
+
 ## Notes
 
 - This integration talks to ABRP's private web API using the same headers and
