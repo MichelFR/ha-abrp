@@ -24,7 +24,8 @@ from .metadata import AbrpMetadata
 
 _LOGGER = logging.getLogger(__name__)
 
-# Reconnect backoff bounds (seconds).
+# Reconnect backoff bounds (seconds). The minimum matches the official ABRP
+# client's 5 s reconnect interval; unlike it we back off on repeated errors.
 _RECONNECT_MIN = 5
 _RECONNECT_MAX = 60
 # A connection that lived at least this long counts as healthy, so the next
@@ -105,8 +106,13 @@ class AbrpLiveStream:
         backoff = _RECONNECT_MIN
         while not self._stopping:
             self._connected_at = None
+            clean_close = False
             try:
                 await self._consume()
+                # The server routinely ends idle streams (~3 minutes without
+                # events); the official ABRP client treats this as normal and
+                # quietly reopens, so we stay "connected" through the gap.
+                clean_close = True
             except asyncio.CancelledError:
                 self._set_connected(False)
                 raise
@@ -117,19 +123,23 @@ class AbrpLiveStream:
                     err,
                     backoff,
                 )
-            self._set_connected(False)
             if self._stopping:
+                self._set_connected(False)
                 break
-            lived_long_enough = (
-                self._connected_at is not None
-                and (time.monotonic() - self._connected_at)
-                >= _HEALTHY_CONNECTION_SECONDS
-            )
-            backoff = (
-                _RECONNECT_MIN
-                if lived_long_enough
-                else min(backoff * 2, _RECONNECT_MAX)
-            )
+            if clean_close:
+                backoff = _RECONNECT_MIN
+            else:
+                self._set_connected(False)
+                lived_long_enough = (
+                    self._connected_at is not None
+                    and (time.monotonic() - self._connected_at)
+                    >= _HEALTHY_CONNECTION_SECONDS
+                )
+                backoff = (
+                    _RECONNECT_MIN
+                    if lived_long_enough
+                    else min(backoff * 2, _RECONNECT_MAX)
+                )
             await asyncio.sleep(backoff)
 
     async def _consume(self) -> None:
