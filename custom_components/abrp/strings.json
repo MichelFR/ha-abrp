@@ -1,0 +1,217 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to ABRP",
+        "description": "Scan this QR code, or open the link below, in the A Better Route Planner app or a browser where you are signed in, then approve the connection. This page continues automatically once approved.\n\n{qr}\n\n[Open connection link]({connect_url})"
+      }
+    },
+    "progress": {
+      "waiting_for_authorization": "Scan this QR code, or open the link below, in the A Better Route Planner app or a browser where you are signed in, then approve the connection. This page continues automatically once approved.\n\n{qr}\n\n[Open connection link]({connect_url})"
+    },
+    "abort": {
+      "cannot_connect": "Failed to connect to ABRP.",
+      "not_authorized": "The connection was not approved in time. Please start again.",
+      "already_configured": "This ABRP account is already configured.",
+      "wrong_account": "The approved account does not match the one being re-authenticated.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "soc": {
+        "name": "State of charge"
+      },
+      "soe": {
+        "name": "State of energy"
+      },
+      "soh": {
+        "name": "Battery health"
+      },
+      "power": {
+        "name": "Power"
+      },
+      "charging_power": {
+        "name": "Charging power"
+      },
+      "hvac_power": {
+        "name": "HVAC power"
+      },
+      "charging_state": {
+        "name": "Charging state",
+        "state": {
+          "not_charging": "Not charging",
+          "charging_ac": "Charging (AC)",
+          "charging_dc": "Charging (DC)",
+          "charging_unknown": "Charging"
+        }
+      },
+      "driving_state": {
+        "name": "Driving state",
+        "state": {
+          "driving": "Driving",
+          "parked": "Parked",
+          "idle": "Idle"
+        }
+      },
+      "speed": {
+        "name": "Speed"
+      },
+      "heading": {
+        "name": "Heading"
+      },
+      "odometer": {
+        "name": "Odometer"
+      },
+      "range": {
+        "name": "Estimated range"
+      },
+      "elevation": {
+        "name": "Elevation"
+      },
+      "voltage": {
+        "name": "Voltage"
+      },
+      "current": {
+        "name": "Current"
+      },
+      "charge_energy_added": {
+        "name": "Charge energy added"
+      },
+      "external_temp": {
+        "name": "External temperature"
+      },
+      "battery_temp": {
+        "name": "Battery temperature"
+      },
+      "cabin_temp": {
+        "name": "Cabin temperature"
+      },
+      "cabin_set_point": {
+        "name": "Cabin set point"
+      },
+      "vehicle_temp": {
+        "name": "Vehicle temperature"
+      },
+      "battery_capacity": {
+        "name": "Battery capacity"
+      },
+      "reference_consumption": {
+        "name": "Reference consumption"
+      },
+      "calibration_confidence": {
+        "name": "Calibration confidence"
+      },
+      "speed_factor": {
+        "name": "Speed factor"
+      },
+      "charger_id": {
+        "name": "Charger ID"
+      },
+      "max_speed": {
+        "name": "Max speed"
+      },
+      "weight": {
+        "name": "Weight"
+      },
+      "last_update": {
+        "name": "Last update"
+      },
+      "data_source": {
+        "name": "Data source"
+      },
+      "source_last_refresh": {
+        "name": "{source} last refresh"
+      },
+      "obd_last_refresh": {
+        "name": "OBD last refresh"
+      }
+    },
+    "binary_sensor": {
+      "charging": {
+        "name": "Charging"
+      },
+      "driving": {
+        "name": "Driving"
+      },
+      "parked": {
+        "name": "Parked"
+      },
+      "dc_charging": {
+        "name": "DC fast charging"
+      },
+      "plugged_in": {
+        "name": "Plugged in"
+      },
+      "asleep": {
+        "name": "Asleep"
+      },
+      "source_connected": {
+        "name": "{source} connected"
+      },
+      "obd_connected": {
+        "name": "OBD connected"
+      },
+      "realtime_connected": {
+        "name": "Realtime connected"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Location"
+      }
+    },
+    "number": {
+      "arrival_soc": {
+        "name": "Destination SoC"
+      },
+      "min_charger_stalls": {
+        "name": "Minimum charger stalls"
+      },
+      "extra_weight": {
+        "name": "Extra weight"
+      }
+    },
+    "switch": {
+      "avoid_tolls": {
+        "name": "Avoid tolls"
+      },
+      "avoid_ferries": {
+        "name": "Avoid ferries"
+      },
+      "avoid_borders": {
+        "name": "Avoid border crossings"
+      },
+      "avoid_motorways": {
+        "name": "Avoid motorways"
+      },
+      "realtime_traffic": {
+        "name": "Realtime traffic"
+      },
+      "realtime_weather": {
+        "name": "Realtime weather"
+      },
+      "adjust_speed": {
+        "name": "Adjust speed to limits"
+      }
+    },
+    "select": {
+      "charge_stops": {
+        "name": "Charge stops",
+        "state": {
+          "optimal": "Optimal",
+          "fewer": "Fewer",
+          "least": "Fewest"
+        }
+      },
+      "drive_profile": {
+        "name": "Drive profile"
+      }
+    },
+    "image": {
+      "car_image": {
+        "name": "Car image"
+      }
+    }
+  }
+}

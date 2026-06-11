@@ -1,0 +1,15 @@
+{
+  "name": "abrp-vehicle-card",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build for the ABRP Vehicle Card bundled with the ABRP integration",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --format=esm --minify --outfile=../custom_components/abrp/www/abrp-vehicle-card.js",
+    "watch": "npm run build -- --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "lit": "^3.2.0"
+  }
+}

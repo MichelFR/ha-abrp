@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-DOMAIN = "abrp_mate"
+DOMAIN = "abrp"
 
 # --- ABRP / Iternio telemetry + settings endpoints ---
 ABRP_HOME_URL = "https://abetterrouteplanner.com/"
@@ -89,7 +89,20 @@ def stream_headers(api_key: str, app_version: str, session_id: str) -> dict[str,
 # tokens are short-lived and fetched on demand.
 CONF_REFRESH_TOKEN = "refresh_token"
 
-PLATFORMS = ["sensor", "binary_sensor", "device_tracker", "number", "switch", "select"]
+PLATFORMS = [
+    "sensor",
+    "binary_sensor",
+    "device_tracker",
+    "image",
+    "number",
+    "switch",
+    "select",
+]
+
+# The bundled Lovelace card, served from the integration's www/ folder and
+# auto-registered as a dashboard resource (storage mode only).
+CARD_URL = "/abrp/abrp-vehicle-card.js"
+CARD_FILENAME = "abrp-vehicle-card.js"
 
 # Account-level planning settings exposed as controls.
 SETTING_ARRIVAL_SOC = "arrival_soc"

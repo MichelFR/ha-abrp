@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - custom_components/abrp_mate/manifest.json
+      - custom_components/abrp/manifest.json
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
       - name: Read manifest version
         id: version
         run: |
-          version="$(jq -r .version custom_components/abrp_mate/manifest.json)"
+          version="$(jq -r .version custom_components/abrp/manifest.json)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Create release if it doesn't exist

@@ -7,7 +7,7 @@ A Home Assistant custom integration for [A Better Route Planner](https://abetter
 (ABRP).
 
 [![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=MichelFR&repository=ha-abrp&category=integration)
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=abrp_mate)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=abrp)
 
 > **This integration reads your vehicle telemetry *from* ABRP — it does not push
 > telemetry to it.** It is the opposite of the well-known "send data to ABRP"
@@ -16,13 +16,19 @@ A Home Assistant custom integration for [A Better Route Planner](https://abetter
 > as Home Assistant entities, just like the ABRP app. It can also read and edit
 > your ABRP **route-planning preferences** (these are settings, not telemetry).
 
+![ABRP Vehicle Card](docs/images/card.png)
+
 ## Features
 
 - One device per vehicle on your ABRP account, plus an account device for
   planning preferences.
 - Realtime telemetry via ABRP's live stream, with adaptive polling as a
   fallback (fast while the car is active, slow while it's parked).
-- Connection diagnostics (online / asleep, cloud vs. OBD) and the data source.
+- A bundled **ABRP Vehicle Card** styled after the ABRP app — installed and
+  registered automatically with the integration (see below).
+- The vehicle's **car render** (model + paint) as an image entity.
+- Connection diagnostics (per-source connected state and last refresh,
+  realtime stream health, asleep) and the data source.
 - View **and edit** your route-planning preferences from Home Assistant.
 - QR-code login (OAuth2) — no password is entered or stored.
 
@@ -39,7 +45,7 @@ A Home Assistant custom integration for [A Better Route Planner](https://abetter
 
 ### Manual
 
-1. Copy `custom_components/abrp_mate` into your Home Assistant
+1. Copy `custom_components/abrp` into your Home Assistant
    `config/custom_components/` directory.
 2. Restart Home Assistant.
 
@@ -48,7 +54,7 @@ A Home Assistant custom integration for [A Better Route Planner](https://abetter
 1. Go to **Settings → Devices & Services → Add Integration** and search for
    **ABRP** (or use the button below):
 
-   [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=abrp_mate)
+   [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=abrp)
 
 2. **Scan the QR code** (or open the link) shown in the dialog on a device that
    is signed in to ABRP, and approve the connection.
@@ -57,14 +63,38 @@ A Home Assistant custom integration for [A Better Route Planner](https://abetter
 If the stored login ever expires, Home Assistant prompts you to re-authenticate
 with the same QR step.
 
+## ABRP Vehicle Card
+
+The integration ships its own Lovelace card, modeled on the vehicle card in
+the ABRP app. It is **installed and registered automatically** — after setup,
+just add **ABRP Vehicle Card** from the dashboard card picker (or
+`type: custom:abrp-vehicle-card` in YAML). Entities are auto-discovered; with
+several vehicles, pick one in the card's visual editor.
+
+- Car render, battery state, last-seen line and a switchable drive profile.
+- **Options** opens all your ABRP planning settings: charge stops, destination
+  SoC, avoid-on-route, realtime traffic/weather, charger stalls, extra weight
+  and drive profile.
+- **Live data** opens the telemetry grid with the providing source per signal
+  (e.g. Enode, OBD, ABRP Estimate) and per-source freshness.
+
+| Options | Live data |
+| --- | --- |
+| ![Plan options](docs/images/options.png) | ![Live data](docs/images/live-data.png) |
+
+The card is built from [`frontend/`](frontend/) (Lit + esbuild) into a single
+self-contained module shipped with the integration; to hack on it run
+`npm install && npm run build` there.
+
 ## Entities
 
 ### Per vehicle
 
 | Type | Entities |
 | --- | --- |
-| Sensor | State of charge, Power, Charging power, Speed, Odometer, Estimated range, Voltage, Current, Charge energy added, External / Battery / Cabin / Vehicle temperature, Reference consumption, Max speed, Weight, Last update, Data source |
-| Binary sensor | Charging, Driving, Parked, DC fast charging, Online, Asleep, Cloud connected, OBD connected |
+| Sensor | State of charge, State of energy, Battery health, Power, Charging power, HVAC power, Charging state, Driving state, Speed, Heading, Odometer, Estimated range, Elevation, Voltage, Current, Charge energy added, External / Battery / Cabin / Vehicle temperature, Cabin set point, Battery capacity, Reference consumption, Calibration confidence, Speed factor, Charger ID, Max speed, Weight, Last update, Data source, per-source last refresh (e.g. Enode / OBD) |
+| Binary sensor | Charging, Driving, Parked, DC fast charging, Plugged in, Asleep, "{Source} connected" (e.g. Enode connected), OBD connected, Realtime connected |
+| Image | Car image (the ABRP render of your model and paint) |
 | Device tracker | GPS location (with heading, speed, country, timezone attributes) |
 | Select | Drive profile (the vehicle's ABRP configurations, e.g. Standard / winter tyres) |
 
