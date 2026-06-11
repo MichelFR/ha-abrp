@@ -10,6 +10,14 @@ from .const import DOMAIN
 from .coordinator import AbrpMateCoordinator
 
 
+def cloud_source_label(vehicle: Vehicle | None) -> str | None:
+    """Display name of the vehicle's cloud telemetry provider (e.g. "Enode")."""
+    source = vehicle.raw.get("ota_tlm_type") if vehicle else None
+    if not isinstance(source, str) or not source:
+        return None
+    return source.replace("_", " ").title()
+
+
 class AbrpMateEntity(CoordinatorEntity[AbrpMateCoordinator]):
     """Base entity tied to a single vehicle on the coordinator."""
 

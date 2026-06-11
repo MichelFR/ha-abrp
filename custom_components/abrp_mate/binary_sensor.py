@@ -12,12 +12,13 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import AbrpMateConfigEntry
 from .api import Snapshot
 from .coordinator import AbrpMateCoordinator
-from .entity import AbrpMateEntity
+from .entity import AbrpMateEntity, cloud_source_label
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -25,6 +26,9 @@ class AbrpBinarySensorDescription(BinarySensorEntityDescription):
     """Describes an ABRP Mate binary sensor."""
 
     value_fn: Callable[[Snapshot], bool | None]
+    # Name carries the vehicle's cloud provider (e.g. "Enode connected");
+    # such entities are only created when the vehicle has a cloud provider.
+    source_named: bool = False
 
 
 # Speed (non-GPS, live) above this counts as moving.
@@ -78,23 +82,17 @@ BINARY_SENSORS: tuple[AbrpBinarySensorDescription, ...] = (
         value_fn=lambda s: s.is_dcfc,
     ),
     AbrpBinarySensorDescription(
-        key="online",
-        translation_key="online",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda s: s.is_connected,
-    ),
-    AbrpBinarySensorDescription(
         key="asleep",
         translation_key="asleep",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.is_asleep,
     ),
     AbrpBinarySensorDescription(
-        key="cloud_connected",
-        translation_key="cloud_connected",
+        key="source_connected",
+        translation_key="source_connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         entity_category=EntityCategory.DIAGNOSTIC,
+        source_named=True,
         value_fn=lambda s: s.cloud_connected,
     ),
     AbrpBinarySensorDescription(
@@ -106,6 +104,21 @@ BINARY_SENSORS: tuple[AbrpBinarySensorDescription, ...] = (
     ),
 )
 
+# Keys of binary sensors that used to exist; their registry entries are
+# removed so they don't linger as unavailable leftovers.
+_REMOVED_KEYS = ("online", "cloud_connected")
+
+
+def _cleanup_removed_entities(
+    hass: HomeAssistant, entry: AbrpMateConfigEntry
+) -> None:
+    registry = er.async_get(hass)
+    for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if reg_entry.domain != "binary_sensor":
+            continue
+        if reg_entry.unique_id.partition("_")[2] in _REMOVED_KEYS:
+            registry.async_remove(reg_entry.entity_id)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -114,11 +127,19 @@ async def async_setup_entry(
 ) -> None:
     """Set up ABRP Mate binary sensors for all known vehicles."""
     coordinator = entry.runtime_data
-    async_add_entities(
-        AbrpMateBinarySensor(coordinator, vehicle_id, description)
-        for vehicle_id in coordinator.data
-        for description in BINARY_SENSORS
-    )
+    _cleanup_removed_entities(hass, entry)
+    entities: list[BinarySensorEntity] = []
+    for vehicle_id in coordinator.data:
+        has_cloud = (
+            cloud_source_label(coordinator.vehicles.get(vehicle_id)) is not None
+        )
+        entities.extend(
+            AbrpMateBinarySensor(coordinator, vehicle_id, description)
+            for description in BINARY_SENSORS
+            if not description.source_named or has_cloud
+        )
+        entities.append(AbrpMateRealtimeConnectedSensor(coordinator, vehicle_id))
+    async_add_entities(entities)
 
 
 class AbrpMateBinarySensor(AbrpMateEntity, BinarySensorEntity):
@@ -135,6 +156,10 @@ class AbrpMateBinarySensor(AbrpMateEntity, BinarySensorEntity):
         super().__init__(coordinator, vehicle_id)
         self.entity_description = description
         self._attr_unique_id = f"{vehicle_id}_{description.key}"
+        if description.source_named:
+            self._attr_translation_placeholders = {
+                "source": cloud_source_label(self.vehicle) or "Cloud"
+            }
 
     @property
     def is_on(self) -> bool | None:
@@ -142,3 +167,19 @@ class AbrpMateBinarySensor(AbrpMateEntity, BinarySensorEntity):
         if snapshot is None:
             return None
         return self.entity_description.value_fn(snapshot)
+
+
+class AbrpMateRealtimeConnectedSensor(AbrpMateEntity, BinarySensorEntity):
+    """Whether the realtime SSE stream for this vehicle is connected."""
+
+    _attr_translation_key = "realtime_connected"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
+        super().__init__(coordinator, vehicle_id)
+        self._attr_unique_id = f"{vehicle_id}_realtime_connected"
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.stream_connected.get(self._vehicle_id, False)

@@ -36,17 +36,19 @@
       "max_speed": { "name": "Max speed" },
       "weight": { "name": "Weight" },
       "last_update": { "name": "Last update" },
-      "data_source": { "name": "Data source" }
+      "data_source": { "name": "Data source" },
+      "source_last_refresh": { "name": "{source} last refresh" },
+      "obd_last_refresh": { "name": "OBD last refresh" }
     },
     "binary_sensor": {
       "charging": { "name": "Charging" },
       "driving": { "name": "Driving" },
       "parked": { "name": "Parked" },
       "dc_charging": { "name": "DC fast charging" },
-      "online": { "name": "Online" },
       "asleep": { "name": "Asleep" },
-      "cloud_connected": { "name": "Cloud connected" },
-      "obd_connected": { "name": "OBD connected" }
+      "source_connected": { "name": "{source} connected" },
+      "obd_connected": { "name": "OBD connected" },
+      "realtime_connected": { "name": "Realtime connected" }
     },
     "device_tracker": {
       "location": { "name": "Location" }

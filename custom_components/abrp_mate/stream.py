@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -26,9 +27,19 @@ _LOGGER = logging.getLogger(__name__)
 # Reconnect backoff bounds (seconds).
 _RECONNECT_MIN = 5
 _RECONNECT_MAX = 60
+# A connection that lived at least this long counts as healthy, so the next
+# reconnect starts from the minimum backoff again.
+_HEALTHY_CONNECTION_SECONDS = 60
+# Reconnect if the stream goes completely silent for this long. The access
+# token used as the session id expires after ~15 minutes anyway, so a periodic
+# reconnect also keeps the session fresh; quiet (parked) vehicles just cycle
+# the connection cheaply.
+_IDLE_TIMEOUT_SECONDS = 600
 
 SnapshotCallback = Callable[[Snapshot], Awaitable[None] | None]
 TokenProvider = Callable[[], Awaitable[str]]
+BaseProvider = Callable[[], Snapshot | None]
+StateCallback = Callable[[bool], None]
 
 
 class AbrpLiveStream:
@@ -42,6 +53,8 @@ class AbrpLiveStream:
         vehicle_id: int,
         on_snapshot: SnapshotCallback,
         seed: Snapshot | None = None,
+        base_provider: BaseProvider | None = None,
+        on_state: StateCallback | None = None,
     ) -> None:
         self._session = session
         self._metadata = metadata
@@ -49,8 +62,26 @@ class AbrpLiveStream:
         self._vehicle_id = vehicle_id
         self._on_snapshot = on_snapshot
         self._current = seed
+        # Latest merged snapshot to use as the merge base for partial events
+        # (typically the coordinator's view, which includes poll updates).
+        self._base_provider = base_provider
+        self._on_state = on_state
+        self._connected = False
+        self._connected_at: float | None = None
         self._task: asyncio.Task | None = None
         self._stopping = False
+
+    @property
+    def connected(self) -> bool:
+        """Whether the SSE connection is currently established."""
+        return self._connected
+
+    def _set_connected(self, connected: bool) -> None:
+        if self._connected == connected:
+            return
+        self._connected = connected
+        if self._on_state is not None:
+            self._on_state(connected)
 
     def start(self) -> None:
         """Start the background reconnect loop."""
@@ -68,14 +99,16 @@ class AbrpLiveStream:
             except asyncio.CancelledError:
                 pass
             self._task = None
+        self._set_connected(False)
 
     async def _run(self) -> None:
         backoff = _RECONNECT_MIN
         while not self._stopping:
+            self._connected_at = None
             try:
                 await self._consume()
-                backoff = _RECONNECT_MIN
             except asyncio.CancelledError:
+                self._set_connected(False)
                 raise
             except Exception as err:  # noqa: BLE001 - log and reconnect
                 _LOGGER.debug(
@@ -84,10 +117,20 @@ class AbrpLiveStream:
                     err,
                     backoff,
                 )
+            self._set_connected(False)
             if self._stopping:
                 break
+            lived_long_enough = (
+                self._connected_at is not None
+                and (time.monotonic() - self._connected_at)
+                >= _HEALTHY_CONNECTION_SECONDS
+            )
+            backoff = (
+                _RECONNECT_MIN
+                if lived_long_enough
+                else min(backoff * 2, _RECONNECT_MAX)
+            )
             await asyncio.sleep(backoff)
-            backoff = min(backoff * 2, _RECONNECT_MAX)
 
     async def _consume(self) -> None:
         # Fetch a fresh access token for each (re)connect; it is used as the
@@ -97,8 +140,18 @@ class AbrpLiveStream:
             self._metadata.api_key, self._metadata.app_version, access_token
         )
         url = f"{TLM_EVENTS_URL}?vehicleIds={self._vehicle_id}"
-        async with self._session.get(headers=headers, url=url) as response:
+        # The session's default timeout would kill a long-lived SSE response;
+        # disable the total deadline and instead reconnect when the stream
+        # goes silent (sock_read) or the connect hangs.
+        timeout = aiohttp.ClientTimeout(
+            total=None, sock_connect=30, sock_read=_IDLE_TIMEOUT_SECONDS
+        )
+        async with self._session.get(
+            url, headers=headers, timeout=timeout
+        ) as response:
             response.raise_for_status()
+            self._connected_at = time.monotonic()
+            self._set_connected(True)
             buffer = ""
             async for chunk in response.content.iter_any():
                 buffer += chunk.decode("utf-8", errors="replace")
@@ -118,13 +171,19 @@ class AbrpLiveStream:
         if not isinstance(event, dict):
             return None
 
+        # Merge onto the freshest full snapshot available: the coordinator's
+        # (which carries poll-only fields like connection status) over our own
+        # last merge result.
+        latest = self._base_provider() if self._base_provider else None
+        base = latest or self._current
+
         vehicle_id = event.get("vehicleId")
         if not isinstance(vehicle_id, int):
-            vehicle_id = self._current.vehicle_id if self._current else None
+            vehicle_id = base.vehicle_id if base else None
         if not isinstance(vehicle_id, int):
             return None
 
-        base = self._current or Snapshot(
+        base = base or Snapshot(
             vehicle_id=vehicle_id,
             source="tlm_event",
             recorded_at=datetime.now(timezone.utc),

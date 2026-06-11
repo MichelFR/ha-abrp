@@ -19,6 +19,7 @@ from homeassistant.const import (
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
+    UnitOfEnergyDistance,
     UnitOfLength,
     UnitOfMass,
     UnitOfPower,
@@ -31,14 +32,42 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from . import AbrpMateConfigEntry
 from .api import Snapshot
 from .coordinator import AbrpMateCoordinator
-from .entity import AbrpMateEntity
+from .entity import AbrpMateEntity, cloud_source_label
 
 
 @dataclass(frozen=True, kw_only=True)
 class AbrpSensorDescription(SensorEntityDescription):
     """Describes an ABRP Mate sensor and how to read it from a snapshot."""
 
-    value_fn: Callable[[Snapshot], float | None]
+    value_fn: Callable[[Snapshot], float | datetime | None]
+    # Name carries the vehicle's cloud provider (e.g. "Enode last refresh");
+    # such entities are only created when the vehicle has a cloud provider.
+    source_named: bool = False
+
+
+def _consumption_display_unit(settings: dict[str, Any]) -> str | None:
+    """Consumption unit matching the user's ABRP app display settings.
+
+    ABRP combines ``measures_system`` with ``inverted_ref_consumption``
+    (energy-per-distance vs distance-per-energy). Imperial non-inverted is
+    Wh/mi in ABRP, which Home Assistant has no unit for; mi/kWh is the
+    imperial norm instead.
+    """
+    system = settings.get("measures_system")
+    if not isinstance(system, str):
+        return None
+    imperial = system != "metric"
+    if settings.get("inverted_ref_consumption"):
+        return (
+            UnitOfEnergyDistance.MILES_PER_KILO_WATT_HOUR
+            if imperial
+            else UnitOfEnergyDistance.KM_PER_KILO_WATT_HOUR
+        )
+    return (
+        UnitOfEnergyDistance.MILES_PER_KILO_WATT_HOUR
+        if imperial
+        else UnitOfEnergyDistance.WATT_HOUR_PER_KM
+    )
 
 
 def _charging_power(snapshot: Snapshot) -> float | None:
@@ -158,7 +187,8 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
     AbrpSensorDescription(
         key="reference_consumption",
         translation_key="reference_consumption",
-        native_unit_of_measurement="Wh/km",
+        native_unit_of_measurement=UnitOfEnergyDistance.WATT_HOUR_PER_KM,
+        device_class=SensorDeviceClass.ENERGY_DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.ref_consumption_wh_km,
@@ -181,6 +211,21 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.weight_kg,
     ),
+    AbrpSensorDescription(
+        key="source_last_refresh",
+        translation_key="source_last_refresh",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        source_named=True,
+        value_fn=lambda s: s.cloud_last_seen,
+    ),
+    AbrpSensorDescription(
+        key="obd_last_refresh",
+        translation_key="obd_last_refresh",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.obd_last_seen,
+    ),
 )
 
 
@@ -193,9 +238,13 @@ async def async_setup_entry(
     coordinator = entry.runtime_data
     entities: list[SensorEntity] = []
     for vehicle_id in coordinator.data:
+        has_cloud = (
+            cloud_source_label(coordinator.vehicles.get(vehicle_id)) is not None
+        )
         entities.extend(
             AbrpMateSensor(coordinator, vehicle_id, description)
             for description in SENSORS
+            if not description.source_named or has_cloud
         )
         entities.append(AbrpMateLastUpdateSensor(coordinator, vehicle_id))
         entities.append(AbrpMateDataSourceSensor(coordinator, vehicle_id))
@@ -216,9 +265,19 @@ class AbrpMateSensor(AbrpMateEntity, SensorEntity):
         super().__init__(coordinator, vehicle_id)
         self.entity_description = description
         self._attr_unique_id = f"{vehicle_id}_{description.key}"
+        if description.source_named:
+            self._attr_translation_placeholders = {
+                "source": cloud_source_label(self.vehicle) or "Cloud"
+            }
+        # Default the display unit to the format chosen in the ABRP app;
+        # Home Assistant converts, and a per-entity override still wins.
+        if description.device_class is SensorDeviceClass.ENERGY_DISTANCE:
+            self._attr_suggested_unit_of_measurement = _consumption_display_unit(
+                coordinator.settings
+            )
 
     @property
-    def native_value(self) -> float | None:
+    def native_value(self) -> float | datetime | None:
         # Returns None (-> "unknown") when ABRP isn't currently providing this
         # value, e.g. a stale/blanked transient signal or an unreported field.
         snapshot = self.snapshot

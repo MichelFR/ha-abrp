@@ -96,6 +96,9 @@ class Snapshot:
     is_asleep: bool | None = None
     cloud_connected: bool | None = None  # via a connected cloud provider (OTA)
     obd_connected: bool | None = None  # via a local OBD dongle
+    cloud_source: str | None = None  # the cloud provider's name (e.g. "enode")
+    cloud_last_seen: datetime | None = None  # last telemetry via the cloud provider
+    obd_last_seen: datetime | None = None  # last telemetry via the OBD dongle
     ref_consumption_wh_km: float | None = None
     max_speed_kmh: float | None = None
     weight_kg: float | None = None
@@ -224,6 +227,15 @@ def _as_float(value: Any) -> float | None:
     )
 
 
+def _first_float(*values: Any) -> float | None:
+    """First value that is actually a number — 0.0 counts, unlike with ``or``."""
+    for value in values:
+        result = _as_float(value)
+        if result is not None:
+            return result
+    return None
+
+
 def _as_bool(value: Any) -> bool | None:
     return value if isinstance(value, bool) else None
 
@@ -236,6 +248,13 @@ def _from_unix_seconds(value: Any) -> datetime:
     seconds = _as_float(value)
     if seconds is None:
         return datetime.now(timezone.utc)
+    return datetime.fromtimestamp(seconds, tz=timezone.utc)
+
+
+def _optional_unix_seconds(value: Any) -> datetime | None:
+    seconds = _as_float(value)
+    if seconds is None or seconds <= 0:
+        return None
     return datetime.fromtimestamp(seconds, tz=timezone.utc)
 
 
@@ -295,10 +314,12 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         if _as_dict(tlm.get("providers")).get("speed") != "gps"
         else None,
         estimated_range_km=_as_float(tlm.get("est_battery_range")),
-        battery_capacity_kwh=_as_float(tlm.get("battery_capacity"))
-        or _as_float(tlm.get("capacity")),
-        charging_energy_added_kwh=_as_float(tlm.get("charge_energy_added"))
-        or _as_float(tlm.get("kwh_charged")),
+        battery_capacity_kwh=_first_float(
+            tlm.get("battery_capacity"), tlm.get("capacity")
+        ),
+        charging_energy_added_kwh=_first_float(
+            tlm.get("charge_energy_added"), tlm.get("kwh_charged")
+        ),
         timezone=_as_str(location.get("timezone")),
         country3=_as_str(location.get("country_3")),
         charger_id=tlm.get("charger_id")
@@ -312,6 +333,9 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         is_asleep=_as_bool(item.get("is_asleep")),
         cloud_connected=_as_bool(item.get("ota_is_connected")),
         obd_connected=_as_bool(item.get("local_is_connected")),
+        cloud_source=_as_str(item.get("ota_tlm_type")),
+        cloud_last_seen=_optional_unix_seconds(item.get("ota_tlm_time")),
+        obd_last_seen=_optional_unix_seconds(item.get("tlm_time")),
         ref_consumption_wh_km=_as_float(tlm.get("calib_ref_cons")),
         max_speed_kmh=_as_float(tlm.get("max_speed")),
         weight_kg=_as_float(tlm.get("weight")),
