@@ -116,6 +116,48 @@ export const cardStyles = css`
     border-radius: 3px;
     background: var(--state-sensor-battery-high-color, #43a047);
     transition: width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .fill.charging::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 100%
+    );
+    width: 45%;
+    animation: charge-sweep 1.6s linear infinite;
+  }
+  @keyframes charge-sweep {
+    from {
+      transform: translateX(-110%);
+    }
+    to {
+      transform: translateX(330%);
+    }
+  }
+  .charge-speed {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 14px;
+    background: color-mix(
+      in srgb,
+      var(--state-sensor-battery-high-color, #43a047) 18%,
+      transparent
+    );
+    color: var(--state-sensor-battery-high-color, #43a047);
+    font-weight: 600;
+    font-size: 0.95em;
+  }
+  .charge-speed ha-icon {
+    --mdc-icon-size: 16px;
   }
   .meta {
     display: flex;

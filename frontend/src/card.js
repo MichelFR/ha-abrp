@@ -109,6 +109,12 @@ export class AbrpVehicleCard extends LitElement {
     const soc = num(socState);
     const image = this._vs("image.car_image");
     const lastSeen = relTime(this._vs("sensor.last_update")?.state);
+    const charging = this._vs("binary_sensor.charging")?.state === "on";
+    const power = Number(this._vs("sensor.charging_power")?.state);
+    const chargeSpeed =
+      charging && Number.isFinite(power) && power > 0
+        ? `${power < 10 ? power.toFixed(1) : Math.round(power)} kW`
+        : null;
 
     return html`<div class="main">
       <div class="head">
@@ -132,9 +138,18 @@ export class AbrpVehicleCard extends LitElement {
             ></ha-state-icon>`
           : html`<ha-icon icon="mdi:battery"></ha-icon>`}
         <span class="soc">${soc ?? "–"}%</span>
+        ${chargeSpeed
+          ? html`<span class="charge-speed">
+              <ha-icon icon="mdi:flash"></ha-icon>${chargeSpeed}
+            </span>`
+          : charging
+            ? html`<span class="charge-speed">
+                <ha-icon icon="mdi:flash"></ha-icon>Charging
+              </span>`
+            : ""}
       </div>
       <div class="bar">
-        <div class="fill" style="width:${soc ?? 0}%"></div>
+        <div class="fill ${charging ? "charging" : ""}" style="width:${soc ?? 0}%"></div>
       </div>
       <div class="meta">
         <span class="seen">

@@ -11,6 +11,7 @@ export const KNOWN_KEYS = {
     "odometer",
     "speed_factor",
     "max_speed",
+    "charging_power",
     "elevation",
     "last_update",
     "data_source",
@@ -28,6 +29,7 @@ export const KNOWN_KEYS = {
     "realtime_weather",
     "adjust_speed",
   ],
+  binary_sensor: ["charging"],
   image: ["car_image"],
   device_tracker: ["location"],
 };
