@@ -312,8 +312,19 @@ def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     snapshot.batt_temp_c = _choose(
         snapshot.batt_temp_c, _num(_rec(event, "batteryTemperature"), "c")
     )
+    snapshot.cabin_set_point_c = _choose(
+        snapshot.cabin_set_point_c, _num(_rec(event, "cabinSetPoint"), "c")
+    )
     snapshot.cabin_temp_c = _choose(
         snapshot.cabin_temp_c, _num(_rec(event, "cabinTemperature"), "c")
+    )
+    # calibratedConfidence.frac is a 0..1 fraction; /0.01 -> percentage.
+    snapshot.calib_confidence_percent = _choose(
+        snapshot.calib_confidence_percent,
+        _scale(_rec(event, "calibratedConfidence"), "frac", 0.01),
+    )
+    snapshot.ref_consumption_wh_km = _choose(
+        snapshot.ref_consumption_wh_km, _num(_rec(event, "calibratedRefCons"), "wh")
     )
     snapshot.charging_energy_added_kwh = _choose(
         snapshot.charging_energy_added_kwh,
@@ -321,6 +332,9 @@ def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     )
     current = _rec(event, "current")
     _apply_transient(snapshot, "current_a", current, _num(current, "a"), now)
+    snapshot.elevation_m = _choose(
+        snapshot.elevation_m, _num(_rec(event, "elevation"), "m")
+    )
     snapshot.estimated_range_km = _choose(
         snapshot.estimated_range_km,
         _scale(_rec(event, "estimatedBatteryRange"), "m", 1000),
@@ -345,9 +359,21 @@ def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
     snapshot.soc_percent = _choose(
         snapshot.soc_percent, _scale(_rec(event, "soc"), "frac", 0.01)
     )
+    snapshot.soe_kwh = _choose(
+        snapshot.soe_kwh, _scale(_rec(event, "soe"), "wh", 1000)
+    )
+    snapshot.soh_percent = _choose(
+        snapshot.soh_percent, _scale(_rec(event, "soh"), "frac", 0.01)
+    )
     # speed.ms is metres/second; /(1/3.6) converts to km/h.
     speed = _rec(event, "speed")
     _apply_transient(snapshot, "speed_kmh", speed, _scale(speed, "ms", 1 / 3.6), now)
+    # A non-positive speed factor marks an invalid calibration.
+    speed_factor = _num(_rec(event, "speedFactor"), "frac")
+    snapshot.speed_factor = _choose(
+        snapshot.speed_factor,
+        speed_factor if speed_factor is not None and speed_factor > 0 else None,
+    )
     voltage = _rec(event, "voltage")
     _apply_transient(snapshot, "voltage_v", voltage, _num(voltage, "v"), now)
 

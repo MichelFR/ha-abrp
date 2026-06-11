@@ -82,6 +82,12 @@ BINARY_SENSORS: tuple[AbrpBinarySensorDescription, ...] = (
         value_fn=lambda s: s.is_dcfc,
     ),
     AbrpBinarySensorDescription(
+        key="plugged_in",
+        translation_key="plugged_in",
+        device_class=BinarySensorDeviceClass.PLUG,
+        value_fn=lambda s: s.plugged_in,
+    ),
+    AbrpBinarySensorDescription(
         key="asleep",
         translation_key="asleep",
         entity_category=EntityCategory.DIAGNOSTIC,

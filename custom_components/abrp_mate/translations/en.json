@@ -20,19 +20,46 @@
   "entity": {
     "sensor": {
       "soc": { "name": "State of charge" },
+      "soe": { "name": "State of energy" },
+      "soh": { "name": "Battery health" },
       "power": { "name": "Power" },
       "charging_power": { "name": "Charging power" },
+      "hvac_power": { "name": "HVAC power" },
+      "charging_state": {
+        "name": "Charging state",
+        "state": {
+          "not_charging": "Not charging",
+          "charging_ac": "Charging (AC)",
+          "charging_dc": "Charging (DC)",
+          "charging_unknown": "Charging"
+        }
+      },
+      "driving_state": {
+        "name": "Driving state",
+        "state": {
+          "driving": "Driving",
+          "parked": "Parked",
+          "idle": "Idle"
+        }
+      },
       "speed": { "name": "Speed" },
+      "heading": { "name": "Heading" },
       "odometer": { "name": "Odometer" },
       "range": { "name": "Estimated range" },
+      "elevation": { "name": "Elevation" },
       "voltage": { "name": "Voltage" },
       "current": { "name": "Current" },
       "charge_energy_added": { "name": "Charge energy added" },
       "external_temp": { "name": "External temperature" },
       "battery_temp": { "name": "Battery temperature" },
       "cabin_temp": { "name": "Cabin temperature" },
+      "cabin_set_point": { "name": "Cabin set point" },
       "vehicle_temp": { "name": "Vehicle temperature" },
+      "battery_capacity": { "name": "Battery capacity" },
       "reference_consumption": { "name": "Reference consumption" },
+      "calibration_confidence": { "name": "Calibration confidence" },
+      "speed_factor": { "name": "Speed factor" },
+      "charger_id": { "name": "Charger ID" },
       "max_speed": { "name": "Max speed" },
       "weight": { "name": "Weight" },
       "last_update": { "name": "Last update" },
@@ -45,6 +72,7 @@
       "driving": { "name": "Driving" },
       "parked": { "name": "Parked" },
       "dc_charging": { "name": "DC fast charging" },
+      "plugged_in": { "name": "Plugged in" },
       "asleep": { "name": "Asleep" },
       "source_connected": { "name": "{source} connected" },
       "obd_connected": { "name": "OBD connected" },

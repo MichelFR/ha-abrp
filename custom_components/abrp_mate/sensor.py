@@ -14,6 +14,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
+    DEGREE,
     PERCENTAGE,
     EntityCategory,
     UnitOfElectricCurrent,
@@ -39,7 +40,7 @@ from .entity import AbrpMateEntity, cloud_source_label
 class AbrpSensorDescription(SensorEntityDescription):
     """Describes an ABRP Mate sensor and how to read it from a snapshot."""
 
-    value_fn: Callable[[Snapshot], float | datetime | None]
+    value_fn: Callable[[Snapshot], float | int | str | datetime | None]
     # Name carries the vehicle's cloud provider (e.g. "Enode last refresh");
     # such entities are only created when the vehicle has a cloud provider.
     source_named: bool = False
@@ -79,6 +80,43 @@ def _charging_power(snapshot: Snapshot) -> float | None:
     return abs(snapshot.power_kw) if snapshot.power_kw is not None else None
 
 
+# The stream's chargingState values, normalized to our enum options.
+_CHARGING_STATES = {
+    "NOT_CHARGING": "not_charging",
+    "CHARGING_AC": "charging_ac",
+    "CHARGING_DC": "charging_dc",
+    "CHARGING_UNKNOWN": "charging_unknown",
+}
+
+
+def _charging_state(s: Snapshot) -> str | None:
+    """Charging state, from the stream's enum or derived from poll booleans."""
+    if s.charging_state is not None:
+        return _CHARGING_STATES.get(s.charging_state)
+    if s.is_charging is None:
+        return None
+    if not s.is_charging:
+        return "not_charging"
+    if s.is_dcfc is None:
+        return "charging_unknown"
+    return "charging_dc" if s.is_dcfc else "charging_ac"
+
+
+def _driving_state(s: Snapshot) -> str | None:
+    """Driving state, from the stream's enum or derived from poll booleans."""
+    if s.driving_state in ("DRIVE", "DRIVING"):
+        return "driving"
+    if s.driving_state in ("PARK", "PARKED"):
+        return "parked"
+    if s.is_driving:
+        return "driving"
+    if s.is_parked:
+        return "parked"
+    if s.is_driving is None and s.is_parked is None:
+        return None
+    return "idle"
+
+
 SENSORS: tuple[AbrpSensorDescription, ...] = (
     AbrpSensorDescription(
         key="soc",
@@ -87,6 +125,21 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: s.soc_percent,
+    ),
+    AbrpSensorDescription(
+        key="soe",
+        translation_key="soe",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.soe_kwh,
+    ),
+    AbrpSensorDescription(
+        key="soh",
+        translation_key="soh",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.soh_percent,
     ),
     AbrpSensorDescription(
         key="power",
@@ -103,6 +156,28 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=_charging_power,
+    ),
+    AbrpSensorDescription(
+        key="hvac_power",
+        translation_key="hvac_power",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.hvac_power_kw,
+    ),
+    AbrpSensorDescription(
+        key="charging_state",
+        translation_key="charging_state",
+        device_class=SensorDeviceClass.ENUM,
+        options=["not_charging", "charging_ac", "charging_dc", "charging_unknown"],
+        value_fn=_charging_state,
+    ),
+    AbrpSensorDescription(
+        key="driving_state",
+        translation_key="driving_state",
+        device_class=SensorDeviceClass.ENUM,
+        options=["driving", "parked", "idle"],
+        value_fn=_driving_state,
     ),
     AbrpSensorDescription(
         key="speed",
@@ -127,6 +202,21 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: s.estimated_range_km,
+    ),
+    AbrpSensorDescription(
+        key="elevation",
+        translation_key="elevation",
+        native_unit_of_measurement=UnitOfLength.METERS,
+        device_class=SensorDeviceClass.DISTANCE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.elevation_m,
+    ),
+    AbrpSensorDescription(
+        key="heading",
+        translation_key="heading",
+        native_unit_of_measurement=DEGREE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.heading_deg,
     ),
     AbrpSensorDescription(
         key="voltage",
@@ -177,12 +267,50 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         value_fn=lambda s: s.cabin_temp_c,
     ),
     AbrpSensorDescription(
+        key="cabin_set_point",
+        translation_key="cabin_set_point",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.cabin_set_point_c,
+    ),
+    AbrpSensorDescription(
         key="vehicle_temp",
         translation_key="vehicle_temp",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: s.vehicle_temp_c,
+    ),
+    AbrpSensorDescription(
+        key="battery_capacity",
+        translation_key="battery_capacity",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.battery_capacity_kwh,
+    ),
+    AbrpSensorDescription(
+        key="calibration_confidence",
+        translation_key="calibration_confidence",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.calib_confidence_percent,
+    ),
+    AbrpSensorDescription(
+        key="speed_factor",
+        translation_key="speed_factor",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.speed_factor,
+    ),
+    AbrpSensorDescription(
+        key="charger_id",
+        translation_key="charger_id",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.charger_id,
     ),
     AbrpSensorDescription(
         key="reference_consumption",

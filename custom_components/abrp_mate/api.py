@@ -84,6 +84,13 @@ class Snapshot:
     estimated_range_km: float | None = None
     hvac_power_kw: float | None = None
     charging_energy_added_kwh: float | None = None
+    soe_kwh: float | None = None  # state of energy: usable kWh left in the pack
+    soh_percent: float | None = None  # state of health
+    elevation_m: float | None = None
+    cabin_set_point_c: float | None = None
+    plugged_in: bool | None = None  # charge cable connected
+    speed_factor: float | None = None  # ABRP's learned real-vs-planned speed
+    calib_confidence_percent: float | None = None  # trust in calib_ref_cons
     timezone: str | None = None
     country3: str | None = None
     charger_id: int | None = None
@@ -279,6 +286,13 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
     location = _as_dict(tlm.get("location"))
     timestamps = _as_dict(tlm.get("timestamps"))
     reference_ts = _as_float(tlm.get("utc"))
+    # calib_confidence comes as a 0..1 fraction.
+    confidence = _as_float(tlm.get("calib_confidence"))
+    # A non-positive speed factor marks an invalid calibration (the ABRP app
+    # drops it too).
+    speed_factor = _as_float(tlm.get("speed_factor"))
+    if speed_factor is not None and speed_factor <= 0:
+        speed_factor = None
 
     def live(field: str, value: float | None) -> float | None:
         """Blank a transient field if its timestamp lags the newest telemetry."""
@@ -320,6 +334,14 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         charging_energy_added_kwh=_first_float(
             tlm.get("charge_energy_added"), tlm.get("kwh_charged")
         ),
+        soe_kwh=_as_float(tlm.get("soe")),
+        soh_percent=_as_float(tlm.get("soh")),
+        elevation_m=_as_float(tlm.get("elevation")),
+        cabin_set_point_c=_as_float(tlm.get("cabin_set_point")),
+        plugged_in=_as_bool(tlm.get("is_charger_connected")),
+        speed_factor=speed_factor,
+        calib_confidence_percent=None if confidence is None else confidence * 100,
+        hvac_power_kw=live("hvac_power", _as_float(tlm.get("hvac_power"))),
         timezone=_as_str(location.get("timezone")),
         country3=_as_str(location.get("country_3")),
         charger_id=tlm.get("charger_id")

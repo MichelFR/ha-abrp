@@ -42,6 +42,7 @@ _MONOTONIC_FIELDS = ("odometer_km", "charging_energy_added_kwh")
 _POLL_STATUS_FIELDS = (
     "is_connected",
     "is_asleep",
+    "plugged_in",
     "cloud_connected",
     "obd_connected",
     "cloud_source",
