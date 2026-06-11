@@ -1,12 +1,16 @@
 {
   "domain": "abrp",
   "name": "ABRP",
+  "after_dependencies": [
+    "lovelace"
+  ],
   "codeowners": [
     "@MichelFR"
   ],
   "config_flow": true,
-  "dependencies": ["http"],
-  "after_dependencies": ["lovelace"],
+  "dependencies": [
+    "http"
+  ],
   "documentation": "https://github.com/MichelFR/ha-abrp",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
