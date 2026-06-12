@@ -252,9 +252,16 @@ export const cardStyles = css`
     padding: 0 4px 8px;
   }
   .section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-weight: 600;
     margin: 16px 0 8px;
     color: var(--primary-text-color);
+  }
+  .section ha-icon {
+    --mdc-icon-size: 18px;
+    color: var(--secondary-text-color);
   }
   .segments {
     display: flex;
@@ -316,6 +323,15 @@ export const cardStyles = css`
     align-items: center;
     padding: 9px 0;
     color: var(--primary-text-color);
+  }
+  .switch-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .switch-label ha-icon {
+    --mdc-icon-size: 18px;
+    color: var(--secondary-text-color);
   }
   .slider-row {
     display: flex;

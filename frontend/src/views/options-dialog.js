@@ -13,10 +13,13 @@ const AVOID_CHIPS = [
 ];
 
 const REALTIME_SWITCHES = [
-  ["switch.realtime_traffic", "Realtime traffic"],
-  ["switch.realtime_weather", "Realtime weather"],
-  ["switch.adjust_speed", "Adjust speed to limits"],
+  ["switch.realtime_traffic", "mdi:traffic-light", "Realtime traffic"],
+  ["switch.realtime_weather", "mdi:weather-partly-cloudy", "Realtime weather"],
+  ["switch.adjust_speed", "mdi:speedometer", "Adjust speed to limits"],
 ];
+
+const section = (icon, label) =>
+  html`<div class="section"><ha-icon icon=${icon}></ha-icon>${label}</div>`;
 
 export function renderOptionsDialog(card) {
   const chargeStops = card._as("select.charge_stops");
@@ -24,21 +27,23 @@ export function renderOptionsDialog(card) {
 
   return html`
     ${chargeStops ? renderChargeStops(card, chargeStops) : ""}
-    ${renderSliderRow(card, "Destination arrival SoC", card._as("number.arrival_soc"), "%")}
-    <div class="section">Avoid on route</div>
+    ${renderSliderRow(card, "Destination arrival SoC", "mdi:battery-low", card._as("number.arrival_soc"), "%")}
+    ${section("mdi:cancel", "Avoid on route")}
     <div class="chips">
       ${AVOID_CHIPS.map(([key, icon, label]) => renderChip(card, key, icon, label))}
     </div>
-    <div class="section">Realtime</div>
-    ${REALTIME_SWITCHES.map(([key, label]) => renderSwitchRow(card, key, label))}
-    ${renderSliderRow(card, "Minimum charger stalls", card._as("number.min_charger_stalls"), "")}
-    ${renderSliderRow(card, "Extra weight", card._as("number.extra_weight"), " kg")}
+    ${section("mdi:update", "Realtime")}
+    ${REALTIME_SWITCHES.map(([key, icon, label]) =>
+      renderSwitchRow(card, key, icon, label)
+    )}
+    ${renderSliderRow(card, "Minimum charger stalls", "mdi:counter", card._as("number.min_charger_stalls"), "")}
+    ${renderSliderRow(card, "Extra weight", "mdi:weight-kilogram", card._as("number.extra_weight"), " kg")}
     ${renderDriveProfile(card, profile)}
   `;
 }
 
 function renderChargeStops(card, chargeStops) {
-  return html`<div class="section">Charge stops</div>
+  return html`${section("mdi:ev-station", "Charge stops")}
     <div class="segments">
       ${(chargeStops.attributes.options || []).map(
         (opt) => html`<button
@@ -52,11 +57,11 @@ function renderChargeStops(card, chargeStops) {
     </div>`;
 }
 
-function renderSliderRow(card, label, state, unit) {
+function renderSliderRow(card, label, icon, state, unit) {
   if (!state) return "";
   const a = state.attributes;
   const value = Number(state.state);
-  return html`<div class="section">${label}</div>
+  return html`${section(icon, label)}
     <div class="slider-row">
       <span class="slider-value"
         >${Number.isFinite(value) ? value : "–"}${unit}</span
@@ -92,11 +97,11 @@ function renderChip(card, key, icon, label) {
   </button>`;
 }
 
-function renderSwitchRow(card, key, label) {
+function renderSwitchRow(card, key, icon, label) {
   const state = card._as(key);
   if (!state) return "";
   return html`<div class="switch-row">
-    <span>${label}</span>
+    <span class="switch-label"><ha-icon icon=${icon}></ha-icon>${label}</span>
     <ha-switch
       .checked=${state.state === "on"}
       @change=${() => card._call("switch", "toggle", state)}
@@ -106,7 +111,7 @@ function renderSwitchRow(card, key, label) {
 
 function renderDriveProfile(card, profile) {
   if (!profile?.attributes?.options?.length) return "";
-  return html`<div class="section">Drive profile</div>
+  return html`${section("mdi:car-cog", "Drive profile")}
     <ha-select
       naturalMenuWidth
       fixedMenuPosition

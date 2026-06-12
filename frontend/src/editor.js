@@ -1,9 +1,9 @@
-/* Visual editor with two tabs: General (title + vehicle) and Display
- * (which card sections are shown). Uses ha-form so selection/saving behaves
- * exactly like core card editors. */
+/* Visual editor with a segmented button group: General (title + vehicle)
+ * and Display (which card sections are shown, with one switch row each). */
 
 import { LitElement, html, css } from "lit";
 import { CARD_TYPE, PLATFORM } from "./const.js";
+import { ensureHaComponents } from "./ha-components.js";
 
 const GENERAL_SCHEMA = [
   { name: "title", selector: { text: {} } },
@@ -20,28 +20,27 @@ const GENERAL_SCHEMA = [
   },
 ];
 
-// Config key -> editor label -> default. Only deviations from the default
-// are stored in the card config.
-export const DISPLAY_OPTIONS = [
-  ["show_image", "Car image", true],
-  ["show_profile", "Drive profile selector", true],
-  ["show_charge_speed", "Charging speed badge", true],
-  ["show_last_seen", "Last seen line", true],
-  ["show_live_data", "Live data link", true],
-  ["show_options", "Options button", true],
-  ["show_live_data_button", "Live data button (alternative to the link)", false],
-];
-
-const DISPLAY_SCHEMA = DISPLAY_OPTIONS.map(([name]) => ({
-  name,
-  selector: { boolean: {} },
-}));
-
-const LABELS = {
+const GENERAL_LABELS = {
   title: "Title (empty = ABRP vehicle name)",
   device: "Vehicle (empty = first ABRP vehicle)",
-  ...Object.fromEntries(DISPLAY_OPTIONS),
 };
+
+// [config key, label, default, icon] — only deviations from the default are
+// stored in the card config.
+export const DISPLAY_OPTIONS = [
+  ["show_image", "Car image", true, "mdi:image-outline"],
+  ["show_profile", "Drive profile selector", true, "mdi:car-cog"],
+  ["show_charge_speed", "Charging speed badge", true, "mdi:flash"],
+  ["show_last_seen", "Last seen line", true, "mdi:clock-outline"],
+  ["show_live_data", "Live data link", true, "mdi:link-variant"],
+  ["show_options", "Options button", true, "mdi:tune-variant"],
+  [
+    "show_live_data_button",
+    "Live data button (alternative to the link)",
+    false,
+    "mdi:chart-box-outline",
+  ],
+];
 
 export class AbrpVehicleCardEditor extends LitElement {
   static get properties() {
@@ -53,6 +52,11 @@ export class AbrpVehicleCardEditor extends LitElement {
     this._tab = "general";
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    ensureHaComponents();
+  }
+
   setConfig(config) {
     this._config = config || {};
   }
@@ -60,33 +64,52 @@ export class AbrpVehicleCardEditor extends LitElement {
   render() {
     if (!this.hass) return html``;
     const general = this._tab === "general";
-    return html`<div class="tabs">
+    return html`<div class="segments">
         <button
-          class="tab ${general ? "on" : ""}"
+          class="segment ${general ? "on" : ""}"
           @click=${() => (this._tab = "general")}
         >
-          General
+          <ha-icon icon="mdi:tune"></ha-icon>General
         </button>
         <button
-          class="tab ${general ? "" : "on"}"
+          class="segment ${general ? "" : "on"}"
           @click=${() => (this._tab = "display")}
         >
-          Display
+          <ha-icon icon="mdi:eye-outline"></ha-icon>Display
         </button>
       </div>
-      <ha-form
-        .hass=${this.hass}
-        .data=${general ? this._config : this._displayData()}
-        .schema=${general ? GENERAL_SCHEMA : DISPLAY_SCHEMA}
-        .computeLabel=${(schema) => LABELS[schema.name] ?? schema.name}
-        @value-changed=${this._valueChanged}
-      ></ha-form>`;
+      ${general ? this._renderGeneral() : this._renderDisplay()}`;
   }
 
-  _displayData() {
-    return Object.fromEntries(
-      DISPLAY_OPTIONS.map(([key, , def]) => [key, this._config[key] ?? def])
-    );
+  _renderGeneral() {
+    return html`<ha-form
+      .hass=${this.hass}
+      .data=${this._config}
+      .schema=${GENERAL_SCHEMA}
+      .computeLabel=${(schema) => GENERAL_LABELS[schema.name] ?? schema.name}
+      @value-changed=${this._valueChanged}
+    ></ha-form>`;
+  }
+
+  _renderDisplay() {
+    return html`${DISPLAY_OPTIONS.map(
+      ([key, label, def, icon]) => html`<div class="row">
+        <ha-icon icon=${icon}></ha-icon>
+        <span class="row-label">${label}</span>
+        <ha-switch
+          .checked=${this._config[key] ?? def}
+          @change=${(ev) => this._toggleDisplay(key, def, ev.target.checked)}
+        ></ha-switch>
+      </div>`
+    )}`;
+  }
+
+  _toggleDisplay(key, def, checked) {
+    const config = { ...this._config, type: `custom:${CARD_TYPE}` };
+    // Only persist deviations from the option's default.
+    if (checked === def) delete config[key];
+    else config[key] = checked;
+    this._dispatch(config);
   }
 
   _valueChanged(ev) {
@@ -98,10 +121,10 @@ export class AbrpVehicleCardEditor extends LitElement {
     };
     if (!config.device) delete config.device;
     if (!config.title) delete config.title;
-    // Only persist deviations from each option's default.
-    for (const [key, , def] of DISPLAY_OPTIONS) {
-      if (config[key] === def || config[key] === undefined) delete config[key];
-    }
+    this._dispatch(config);
+  }
+
+  _dispatch(config) {
     this._config = config;
     this.dispatchEvent(
       new CustomEvent("config-changed", {
@@ -114,29 +137,52 @@ export class AbrpVehicleCardEditor extends LitElement {
 
   static get styles() {
     return css`
-      .tabs {
+      .segments {
         display: flex;
-        border-bottom: 1px solid var(--divider-color);
+        background: var(--secondary-background-color);
+        border-radius: 12px;
+        padding: 4px;
         margin-bottom: 16px;
       }
-      .tab {
+      .segment {
         flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
         border: none;
         background: transparent;
-        color: var(--secondary-text-color);
-        font-size: 1em;
-        padding: 10px 0;
-        cursor: pointer;
-        border-bottom: 2px solid transparent;
-        transition: color 0.15s ease, border-color 0.15s ease;
-      }
-      .tab:hover {
         color: var(--primary-text-color);
+        padding: 10px 0;
+        border-radius: 9px;
+        cursor: pointer;
+        font-size: 0.95em;
+        transition: background-color 0.15s ease, color 0.15s ease;
       }
-      .tab.on {
-        color: var(--primary-color);
-        border-bottom-color: var(--primary-color);
+      .segment:hover:not(.on) {
+        background: rgba(127, 127, 127, 0.18);
+      }
+      .segment.on {
+        background: var(--primary-text-color);
+        color: var(--card-background-color);
         font-weight: 600;
+      }
+      .segment ha-icon {
+        --mdc-icon-size: 18px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 4px;
+      }
+      .row ha-icon {
+        --mdc-icon-size: 20px;
+        color: var(--secondary-text-color);
+      }
+      .row-label {
+        flex: 1;
+        color: var(--primary-text-color);
       }
     `;
   }
