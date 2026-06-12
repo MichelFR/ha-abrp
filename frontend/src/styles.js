@@ -8,6 +8,18 @@ export const cardStyles = css`
     padding: 8px;
     color: var(--secondary-text-color);
   }
+  .clickable {
+    cursor: pointer;
+  }
+  .seen.clickable {
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin: -2px -6px;
+    transition: background-color 0.15s ease;
+  }
+  .seen.clickable:hover {
+    background: var(--secondary-background-color);
+  }
   .head {
     display: flex;
     justify-content: space-between;

@@ -73,6 +73,19 @@ export class AbrpVehicleCard extends LitElement {
     return id ? this.hass.states[id] : undefined;
   }
 
+  /* Open the standard more-info dialog for a discovered entity. */
+  _moreInfo(key) {
+    const entityId = this._vmap?.[key] || this._amap?.[key];
+    if (!entityId) return;
+    this.dispatchEvent(
+      new CustomEvent("hass-more-info", {
+        detail: { entityId },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   _call(domain, service, state, data = {}) {
     this.hass.callService(domain, service, {
       entity_id: state.entity_id,
@@ -134,13 +147,14 @@ export class AbrpVehicleCard extends LitElement {
         </div>
         ${image?.attributes?.entity_picture
           ? html`<img
-              class="car"
+              class="car clickable"
               src="${image.attributes.entity_picture}"
               alt="${name}"
+              @click=${() => this._moreInfo("image.car_image")}
             />`
           : ""}
       </div>
-      <div class="soc-row">
+      <div class="soc-row clickable" @click=${() => this._moreInfo("sensor.soc")}>
         ${socState
           ? html`<ha-state-icon
               .hass=${this.hass}
@@ -149,7 +163,13 @@ export class AbrpVehicleCard extends LitElement {
           : html`<ha-icon icon="mdi:battery"></ha-icon>`}
         <span class="soc">${soc ?? "–"}%</span>
         ${chargeSpeed
-          ? html`<span class="charge-speed">
+          ? html`<span
+              class="charge-speed clickable"
+              @click=${(ev) => {
+                ev.stopPropagation();
+                this._moreInfo("sensor.charging_power");
+              }}
+            >
               <ha-icon icon="mdi:flash"></ha-icon>${chargeSpeed}
             </span>`
           : charging
@@ -158,11 +178,14 @@ export class AbrpVehicleCard extends LitElement {
               </span>`
             : ""}
       </div>
-      <div class="bar">
+      <div class="bar clickable" @click=${() => this._moreInfo("sensor.soc")}>
         <div class="fill ${charging ? "charging" : ""}" style="width:${soc ?? 0}%"></div>
       </div>
       <div class="meta">
-        <span class="seen">
+        <span
+          class="seen clickable"
+          @click=${() => this._moreInfo("sensor.last_update")}
+        >
           <span class="dot"></span>
           ${lastSeen ? `Last seen ${lastSeen}` : "Never seen"}
         </span>
