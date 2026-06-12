@@ -255,6 +255,15 @@ export const cardStyles = css`
     color: var(--primary-text-color);
     padding: 4px 4px 0;
   }
+  .confirm-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .btn.primary {
+    background: var(--primary-color);
+    color: var(--text-primary-color, #fff);
+  }
   .section {
     display: flex;
     align-items: center;

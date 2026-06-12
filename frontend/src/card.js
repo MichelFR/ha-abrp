@@ -362,27 +362,30 @@ export class AbrpVehicleCard extends LitElement {
     const { state, option } = this._confirmProfile;
     return html`<ha-dialog
       open
+      hideActions
       .heading=${"Switch drive profile?"}
       @closed=${() => (this._confirmProfile = null)}
     >
+      <div slot="heading" class="dlg-head">
+        <span class="dlg-title">Switch drive profile?</span>
+      </div>
       <div class="confirm-text">
         Switch the drive profile from "${state.state}" to "${option}"?
       </div>
-      <mwc-button
-        slot="secondaryAction"
-        @click=${() => (this._confirmProfile = null)}
-      >
-        Cancel
-      </mwc-button>
-      <mwc-button
-        slot="primaryAction"
-        @click=${() => {
-          this._call("select", "select_option", state, { option });
-          this._confirmProfile = null;
-        }}
-      >
-        Switch
-      </mwc-button>
+      <div class="confirm-actions">
+        <button class="btn" @click=${() => (this._confirmProfile = null)}>
+          Cancel
+        </button>
+        <button
+          class="btn primary"
+          @click=${() => {
+            this._call("select", "select_option", state, { option });
+            this._confirmProfile = null;
+          }}
+        >
+          <ha-icon icon="mdi:check"></ha-icon>Switch
+        </button>
+      </div>
     </ha-dialog>`;
   }
 
