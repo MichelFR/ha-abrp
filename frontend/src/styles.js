@@ -251,18 +251,59 @@ export const cardStyles = css`
   .dlg-body {
     padding: 0 4px 8px;
   }
-  .confirm-text {
+  /* MD3-style confirmation dialog on HA theme tokens */
+  ha-dialog.confirm {
+    --ha-dialog-border-radius: 28px;
+    --mdc-dialog-min-width: min(360px, 90vw);
+    --mdc-dialog-max-width: 420px;
+  }
+  .confirm-body {
+    padding: 8px 4px 0;
+  }
+  .confirm-title {
+    font-size: 1.4em;
+    font-weight: 500;
+    line-height: 1.3;
     color: var(--primary-text-color);
-    padding: 4px 4px 0;
+    margin-bottom: 14px;
+  }
+  .confirm-text {
+    color: var(--secondary-text-color);
+    font-size: 0.95em;
+    line-height: 1.45;
   }
   .confirm-actions {
     display: flex;
-    gap: 12px;
-    margin-top: 20px;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 26px;
   }
-  .btn.primary {
+  .text-btn,
+  .filled-btn {
+    border: none;
+    border-radius: 20px;
+    padding: 10px 18px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, filter 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .text-btn {
+    background: transparent;
+    color: var(--primary-color);
+  }
+  .text-btn:hover {
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  }
+  .filled-btn {
     background: var(--primary-color);
     color: var(--text-primary-color, #fff);
+    padding: 10px 24px;
+  }
+  .filled-btn:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
   .section {
     display: flex;

@@ -363,28 +363,32 @@ export class AbrpVehicleCard extends LitElement {
     return html`<ha-dialog
       open
       hideActions
-      .heading=${"Switch drive profile?"}
+      class="confirm"
       @closed=${() => (this._confirmProfile = null)}
     >
-      <div slot="heading" class="dlg-head">
-        <span class="dlg-title">Switch drive profile?</span>
-      </div>
-      <div class="confirm-text">
-        Switch the drive profile from "${state.state}" to "${option}"?
-      </div>
-      <div class="confirm-actions">
-        <button class="btn" @click=${() => (this._confirmProfile = null)}>
-          Cancel
-        </button>
-        <button
-          class="btn primary"
-          @click=${() => {
-            this._call("select", "select_option", state, { option });
-            this._confirmProfile = null;
-          }}
-        >
-          <ha-icon icon="mdi:check"></ha-icon>Switch
-        </button>
+      <div class="confirm-body">
+        <div class="confirm-title">Switch drive profile?</div>
+        <div class="confirm-text">
+          This changes the active drive profile from "${state.state}" to
+          "${option}" in ABRP.
+        </div>
+        <div class="confirm-actions">
+          <button
+            class="text-btn"
+            @click=${() => (this._confirmProfile = null)}
+          >
+            Cancel
+          </button>
+          <button
+            class="filled-btn"
+            @click=${() => {
+              this._call("select", "select_option", state, { option });
+              this._confirmProfile = null;
+            }}
+          >
+            Switch
+          </button>
+        </div>
       </div>
     </ha-dialog>`;
   }
