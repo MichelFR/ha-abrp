@@ -109,9 +109,10 @@ export class AbrpVehicleCard extends LitElement {
     if (!this.hass?.connection) return;
     this._tmplUnsub = this._tmplUnsub || {};
     this._templateResults = this._templateResults || {};
-    const templates = Object.values(this._config.entities || {}).filter(
-      (value) => isTemplate(value)
-    );
+    const templates = [
+      ...Object.values(this._config.entities || {}),
+      this._config.title,
+    ].filter((value) => isTemplate(value));
     for (const template of templates) {
       if (this._tmplUnsub[template]) continue;
       this._tmplUnsub[template] = true; // claim before the async subscribe
@@ -190,8 +191,13 @@ export class AbrpVehicleCard extends LitElement {
 
   _renderMain(vehicle) {
     const abrpName = this._vs("sensor.vehicle_name")?.state;
+    const rawTitle = this._config.title;
+    const titleValue =
+      rawTitle && isTemplate(rawTitle)
+        ? String(this._templateResults?.[rawTitle] ?? "")
+        : rawTitle;
     const name =
-      this._config.title ||
+      titleValue ||
       (abrpName && abrpName !== "unknown" && abrpName !== "unavailable"
         ? abrpName
         : null) ||

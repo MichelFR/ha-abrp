@@ -87,25 +87,3 @@ export function entityMap(hass, ents) {
   }
   return map;
 }
-
-// Every entity slot the card displays, with a friendly label for the editor.
-export const OVERRIDABLE_KEYS = [
-  ["sensor.vehicle_name", "Vehicle name"],
-  ["image.car_image", "Car image"],
-  ["select.drive_profile", "Drive profile"],
-  ["sensor.soc", "State of charge"],
-  ["binary_sensor.charging", "Charging"],
-  ["sensor.charging_power", "Charging power"],
-  ["sensor.last_update", "Last update"],
-  ["sensor.range", "Range"],
-  ["sensor.reference_consumption", "Reference consumption"],
-  ["sensor.battery_capacity", "Battery capacity"],
-  ["sensor.odometer", "Odometer"],
-  ["device_tracker.location", "Location"],
-  ["sensor.speed_factor", "Speed factor"],
-  ["sensor.max_speed", "Maximum speed"],
-  ["sensor.elevation", "Elevation"],
-  ["sensor.data_source", "Data source"],
-  ["sensor.source_last_refresh", "Cloud last refresh"],
-  ["sensor.obd_last_refresh", "OBD last refresh"],
-];

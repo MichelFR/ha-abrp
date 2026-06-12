@@ -1,14 +1,12 @@
 /* Visual editor with subpages: the root shows the vehicle picker and a list
- * of settings groups; each row opens a subpage with its own options. */
+ * of settings groups. Each subpage carries its display toggles plus the
+ * entity slots it covers; every slot offers Automatic (discovered entity),
+ * Entity (any entity) or Custom (fixed value / Jinja template) — the same
+ * pattern core cards like tile use for composite/custom values. */
 
 import { LitElement, html, css } from "lit";
 import { CARD_TYPE, PLATFORM } from "./const.js";
-import {
-  OVERRIDABLE_KEYS,
-  accountEntities,
-  entityMap,
-  vehicleDevices,
-} from "./entities.js";
+import { accountEntities, entityMap, vehicleDevices } from "./entities.js";
 import { isEntityId, isTemplate } from "./format.js";
 import { ensureHaComponents } from "./ha-components.js";
 
@@ -25,8 +23,6 @@ const DEVICE_SCHEMA = [
     },
   },
 ];
-
-const TITLE_SCHEMA = [{ name: "title", selector: { text: {} } }];
 
 // Toggles: [config key, label, default, icon]. Only deviations from the
 // default are stored in the card config.
@@ -53,9 +49,38 @@ const TOGGLES = {
   ],
 };
 
+// Entity slots per subpage: [slot key, label, icon].
+const PAGE_SLOTS = {
+  illustration: [["image.car_image", "Car image", "mdi:image-outline"]],
+  profile: [["select.drive_profile", "Drive profile", "mdi:car-cog"]],
+  battery: [
+    ["sensor.soc", "State of charge", "mdi:battery-high"],
+    ["binary_sensor.charging", "Charging", "mdi:battery-charging"],
+    ["sensor.charging_power", "Charging power", "mdi:flash"],
+  ],
+  status: [["sensor.last_update", "Last update", "mdi:clock-outline"]],
+  livedata: [
+    ["sensor.soc", "State of charge", "mdi:battery-high"],
+    ["sensor.range", "Range", "mdi:map-marker-distance"],
+    [
+      "sensor.reference_consumption",
+      "Reference consumption",
+      "mdi:lightning-bolt-outline",
+    ],
+    ["sensor.battery_capacity", "Battery capacity", "mdi:battery"],
+    ["sensor.odometer", "Odometer", "mdi:counter"],
+    ["device_tracker.location", "Location", "mdi:map-marker"],
+    ["sensor.speed_factor", "Speed factor", "mdi:speedometer"],
+    ["sensor.max_speed", "Maximum speed", "mdi:speedometer-medium"],
+    ["sensor.elevation", "Elevation", "mdi:image-filter-hdr"],
+    ["sensor.data_source", "Data source", "mdi:database-outline"],
+    ["sensor.source_last_refresh", "Cloud last refresh", "mdi:cloud-outline"],
+    ["sensor.obd_last_refresh", "OBD last refresh", "mdi:car-connected"],
+  ],
+};
+
 const PAGES = [
   { id: "title", icon: "mdi:format-title", label: "Title" },
-  { id: "entities", icon: "mdi:shape-outline", label: "Entities" },
   {
     id: "illustration",
     icon: "mdi:image-outline",
@@ -65,16 +90,25 @@ const PAGES = [
   { id: "battery", icon: "mdi:battery-charging", label: "Battery & charging" },
   { id: "status", icon: "mdi:clock-outline", label: "Status line" },
   { id: "buttons", icon: "mdi:gesture-tap-button", label: "Buttons" },
+  { id: "livedata", icon: "mdi:chart-box-outline", label: "Live data" },
 ];
+
+const TITLE_SLOT = "sensor.vehicle_name";
 
 export class AbrpVehicleCardEditor extends LitElement {
   static get properties() {
-    return { hass: {}, _config: {}, _page: { state: true } };
+    return {
+      hass: {},
+      _config: {},
+      _page: { state: true },
+      _modes: { state: true },
+    };
   }
 
   constructor() {
     super();
     this._page = null; // null = root, otherwise a PAGES id
+    this._modes = {}; // slot key -> "auto" | "entity" | "custom" (UI state)
   }
 
   connectedCallback() {
@@ -88,10 +122,6 @@ export class AbrpVehicleCardEditor extends LitElement {
 
   render() {
     if (!this.hass) return html``;
-    if (this._page?.startsWith("entity:")) {
-      return this._renderEntityDetail(this._page.slice(7));
-    }
-    if (this._page === "entities") return this._renderEntities();
     const page = PAGES.find((p) => p.id === this._page);
     return page ? this._renderSubpage(page) : this._renderRoot();
   }
@@ -138,37 +168,43 @@ export class AbrpVehicleCardEditor extends LitElement {
 
   _summary(pageId) {
     if (pageId === "title") {
-      return this._config.title || "ABRP vehicle name";
+      return (
+        this._config.title ||
+        (this._config.entities?.[TITLE_SLOT] ?? "ABRP vehicle name")
+      );
     }
-    if (pageId === "entities") {
-      const count = Object.keys(this._config.entities || {}).length;
-      return count ? `${count} overridden` : "Automatic";
-    }
+    const overridden = (PAGE_SLOTS[pageId] || []).filter(
+      ([key]) => this._config.entities?.[key]
+    ).length;
+    const suffix = overridden ? ` · ${overridden} overridden` : "";
     const toggles = TOGGLES[pageId] || [];
+    if (!toggles.length) return overridden ? suffix.slice(3) : "Automatic";
     const shown = toggles.filter(([key, , def]) => this._config[key] ?? def);
-    if (!shown.length) return "Nothing shown";
+    if (!shown.length) return `Nothing shown${suffix}`;
     if (shown.length === toggles.length && toggles.length === 1) {
-      return "Shown";
+      return `Shown${suffix}`;
     }
-    return shown
-      .map(([, label]) => label.replace(/^Show /, ""))
-      .join(", ");
+    return (
+      shown.map(([, label]) => label.replace(/^Show /, "")).join(", ") + suffix
+    );
   }
 
   /* -- subpages -- */
 
   _renderSubpage(page) {
-    return html`${this._subpageHead(page.label, () => (this._page = null))}
+    return html`<div class="subpage-head">
+        <button class="back" @click=${() => (this._page = null)}>
+          <ha-icon icon="mdi:chevron-left"></ha-icon>
+        </button>
+        <span class="subpage-title">${page.label}</span>
+      </div>
+      ${(TOGGLES[page.id] || []).map(([key, label, def, icon]) =>
+        this._renderToggle(key, label, def, icon)
+      )}
       ${page.id === "title"
-        ? html`<ha-form
-            .hass=${this.hass}
-            .data=${this._config}
-            .schema=${TITLE_SCHEMA}
-            .computeLabel=${() => "Title (empty = ABRP vehicle name)"}
-            @value-changed=${this._valueChanged}
-          ></ha-form>`
-        : (TOGGLES[page.id] || []).map(([key, label, def, icon]) =>
-            this._renderToggle(key, label, def, icon)
+        ? this._renderTitleSlot()
+        : (PAGE_SLOTS[page.id] || []).map(([key, label, icon]) =>
+            this._renderSlot(key, label, icon)
           )}`;
   }
 
@@ -183,92 +219,149 @@ export class AbrpVehicleCardEditor extends LitElement {
     </div>`;
   }
 
-  /* -- entities: list + per-slot detail -- */
+  /* -- slot editors: Automatic / Entity / Custom -- */
 
-  _renderEntities() {
-    const defaults = this._defaults();
-    const overrides = this._config.entities || {};
-    return html`${this._subpageHead("Entities", () => (this._page = null))}
-      <div class="nav">
-        ${OVERRIDABLE_KEYS.map(
-          ([key, label]) => html`<button
-            class="nav-row"
-            @click=${() => (this._page = `entity:${key}`)}
-          >
-            <ha-icon
-              class="nav-icon"
-              icon=${overrides[key]
-                ? "mdi:pencil-circle"
-                : "mdi:circle-small"}
-            ></ha-icon>
-            <span class="nav-labels">
-              <span class="nav-label">${label}</span>
-              <span class="nav-secondary"
-                >${overrides[key] || defaults[key] || "not found"}</span
-              >
-            </span>
-            <ha-icon icon="mdi:chevron-right"></ha-icon>
-          </button>`
-        )}
-      </div>`;
+  _slotMode(key, override) {
+    if (this._modes[key]) return this._modes[key];
+    if (!override) return "auto";
+    return isEntityId(override) && !isTemplate(override) ? "entity" : "custom";
   }
 
-  _renderEntityDetail(key) {
-    const label =
-      OVERRIDABLE_KEYS.find(([k]) => k === key)?.[1] || key;
+  _renderModeChips(key, mode, onMode) {
+    return html`<div class="modes">
+      ${[
+        ["auto", "Automatic"],
+        ["entity", "Entity"],
+        ["custom", "Custom"],
+      ].map(
+        ([id, label]) => html`<button
+          class="mode ${mode === id ? "on" : ""}"
+          @click=${() => onMode(id)}
+        >
+          ${label}
+        </button>`
+      )}
+    </div>`;
+  }
+
+  _renderSlot(key, label, icon) {
     const override = this._config.entities?.[key] || "";
-    const isEntity = !!override && isEntityId(override) && !isTemplate(override);
-    const defaults = this._defaults();
-    return html`${this._subpageHead(label, () => (this._page = "entities"))}
-      <div class="hint">
-        Default: ${defaults[key] || "none discovered"}
+    const mode = this._slotMode(key, override);
+    const def = this._defaults()[key];
+
+    return html`<div class="section">
+        <ha-icon icon=${icon}></ha-icon>${label}
       </div>
-      <ha-form
-        .hass=${this.hass}
-        .data=${{ entity: isEntity ? override : "" }}
-        .schema=${[{ name: "entity", selector: { entity: {} } }]}
-        .computeLabel=${() => "Entity"}
-        @value-changed=${(ev) => {
-          ev.stopPropagation();
-          this._setOverride(key, ev.detail.value.entity || "");
-        }}
-      ></ha-form>
-      <ha-form
-        .hass=${this.hass}
-        .data=${{ custom: isEntity ? "" : override }}
-        .schema=${[{ name: "custom", selector: { text: {} } }]}
-        .computeLabel=${() => "Custom value or template"}
-        @value-changed=${(ev) => {
-          ev.stopPropagation();
-          this._setOverride(key, ev.detail.value.custom || "");
-        }}
-      ></ha-form>
-      <div class="hint">
-        Pick an entity, enter a fixed value, or a template like
-        <code>{{ states('sensor.example') }}</code>. Leave both empty for
-        the automatic entity.
-      </div>`;
+      ${this._renderModeChips(key, mode, (id) => {
+        this._modes = { ...this._modes, [key]: id };
+        if (id === "auto") this._setOverride(key, "");
+      })}
+      ${mode === "auto"
+        ? html`<div class="hint">Automatic: ${def || "not found"}</div>`
+        : mode === "entity"
+          ? html`<ha-form
+              .hass=${this.hass}
+              .data=${{
+                value: isEntityId(override) && !isTemplate(override)
+                  ? override
+                  : "",
+              }}
+              .schema=${[{ name: "value", selector: { entity: {} } }]}
+              .computeLabel=${() => "Entity"}
+              @value-changed=${(ev) => {
+                ev.stopPropagation();
+                this._setOverride(key, ev.detail.value.value || "");
+              }}
+            ></ha-form>`
+          : html`<ha-form
+              .hass=${this.hass}
+              .data=${{
+                value: isEntityId(override) && !isTemplate(override)
+                  ? ""
+                  : override,
+              }}
+              .schema=${[{ name: "value", selector: { template: {} } }]}
+              .computeLabel=${() => "Value or template"}
+              @value-changed=${(ev) => {
+                ev.stopPropagation();
+                this._setOverride(key, ev.detail.value.value || "");
+              }}
+            ></ha-form>`}`;
   }
 
-  _setOverride(key, value) {
+  /* Title: Custom edits config.title (text or template); Entity overrides
+   * the vehicle-name slot; Automatic clears both. */
+  _renderTitleSlot() {
+    const override = this._config.entities?.[TITLE_SLOT] || "";
+    const custom = this._config.title || "";
+    const mode =
+      this._modes.__title ||
+      (custom ? "custom" : override ? "entity" : "auto");
+    const def = this._defaults()[TITLE_SLOT];
+
+    return html`<div class="section">
+        <ha-icon icon="mdi:format-title"></ha-icon>Name
+      </div>
+      ${this._renderModeChips("__title", mode, (id) => {
+        this._modes = { ...this._modes, __title: id };
+        if (id === "auto") {
+          this._dispatch(this._withoutTitle(this._withOverride(TITLE_SLOT, "")));
+        } else if (id === "entity") {
+          this._dispatch(this._withoutTitle(this._config));
+        } else if (id === "custom") {
+          this._dispatch(this._withOverride(TITLE_SLOT, ""));
+        }
+      })}
+      ${mode === "auto"
+        ? html`<div class="hint">
+            Automatic: ${def || "ABRP vehicle name"}
+          </div>`
+        : mode === "entity"
+          ? html`<ha-form
+              .hass=${this.hass}
+              .data=${{ value: override }}
+              .schema=${[{ name: "value", selector: { entity: {} } }]}
+              .computeLabel=${() => "Entity"}
+              @value-changed=${(ev) => {
+                ev.stopPropagation();
+                this._setOverride(TITLE_SLOT, ev.detail.value.value || "");
+              }}
+            ></ha-form>`
+          : html`<ha-form
+              .hass=${this.hass}
+              .data=${{ value: custom }}
+              .schema=${[{ name: "value", selector: { template: {} } }]}
+              .computeLabel=${() => "Custom name or template"}
+              @value-changed=${(ev) => {
+                ev.stopPropagation();
+                const config = { ...this._config, type: `custom:${CARD_TYPE}` };
+                if (ev.detail.value.value) config.title = ev.detail.value.value;
+                else delete config.title;
+                this._dispatch(config);
+              }}
+            ></ha-form>`}`;
+  }
+
+  /* -- config plumbing -- */
+
+  _withOverride(key, value) {
     const entities = { ...(this._config.entities || {}) };
     if (!value) delete entities[key];
     else entities[key] = value;
     const config = { ...this._config, entities, type: `custom:${CARD_TYPE}` };
     if (!Object.keys(entities).length) delete config.entities;
-    this._dispatch(config);
+    return config;
   }
 
-  _subpageHead(title, onBack) {
-    return html`<div class="subpage-head">
-      <button class="back" @click=${onBack}>
-        <ha-icon icon="mdi:chevron-left"></ha-icon>
-      </button>
-      <span class="subpage-title">${title}</span>
-    </div>`;
+  _withoutTitle(config) {
+    const next = { ...config };
+    delete next.title;
+    return next;
   }
 
-  /* -- config plumbing -- */
+  _setOverride(key, value) {
+    this._dispatch(this._withOverride(key, value));
+  }
 
   _toggleDisplay(key, def, checked) {
     const config = { ...this._config, type: `custom:${CARD_TYPE}` };
@@ -286,7 +379,6 @@ export class AbrpVehicleCardEditor extends LitElement {
       type: `custom:${CARD_TYPE}`,
     };
     if (!config.device) delete config.device;
-    if (!config.title) delete config.title;
     this._dispatch(config);
   }
 
@@ -385,15 +477,48 @@ export class AbrpVehicleCardEditor extends LitElement {
         flex: 1;
         color: var(--primary-text-color);
       }
+      .section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin: 18px 0 8px;
+        color: var(--primary-text-color);
+      }
+      .section ha-icon {
+        --mdc-icon-size: 18px;
+        color: var(--secondary-text-color);
+      }
+      .modes {
+        display: flex;
+        background: var(--secondary-background-color);
+        border-radius: 10px;
+        padding: 3px;
+        margin-bottom: 10px;
+      }
+      .mode {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: var(--primary-text-color);
+        padding: 8px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9em;
+        transition: background-color 0.15s ease, color 0.15s ease;
+      }
+      .mode:hover:not(.on) {
+        background: rgba(127, 127, 127, 0.18);
+      }
+      .mode.on {
+        background: var(--primary-color);
+        color: var(--text-primary-color, #fff);
+        font-weight: 600;
+      }
       .hint {
         color: var(--secondary-text-color);
         font-size: 0.85em;
-        margin: 8px 4px 12px;
-      }
-      .hint code {
-        background: var(--secondary-background-color);
-        border-radius: 4px;
-        padding: 1px 5px;
+        margin: 4px 4px 12px;
       }
       ha-form {
         display: block;
