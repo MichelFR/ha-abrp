@@ -202,11 +202,21 @@ export class AbrpVehicleCard extends LitElement {
               : ""}
           </div>`
         : ""}
-      ${show("show_options")
+      ${show("show_options") || this._config.show_live_data_button === true
         ? html`<div class="buttons">
-            <button class="btn" @click=${() => (this._dialog = "options")}>
-              <ha-icon icon="mdi:tune-variant"></ha-icon>Options
-            </button>
+            ${show("show_options")
+              ? html`<button
+                  class="btn"
+                  @click=${() => (this._dialog = "options")}
+                >
+                  <ha-icon icon="mdi:tune-variant"></ha-icon>Options
+                </button>`
+              : ""}
+            ${this._config.show_live_data_button === true
+              ? html`<button class="btn" @click=${() => (this._dialog = "live")}>
+                  <ha-icon icon="mdi:chart-box-outline"></ha-icon>Live data
+                </button>`
+              : ""}
           </div>`
         : ""}
     </div>`;

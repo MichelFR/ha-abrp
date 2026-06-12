@@ -20,15 +20,16 @@ const GENERAL_SCHEMA = [
   },
 ];
 
-// Config key -> editor label. Everything defaults to shown; only an
-// explicit `false` is stored in the card config.
+// Config key -> editor label -> default. Only deviations from the default
+// are stored in the card config.
 export const DISPLAY_OPTIONS = [
-  ["show_image", "Car image"],
-  ["show_profile", "Drive profile selector"],
-  ["show_charge_speed", "Charging speed badge"],
-  ["show_last_seen", "Last seen line"],
-  ["show_live_data", "Live data link"],
-  ["show_options", "Options button"],
+  ["show_image", "Car image", true],
+  ["show_profile", "Drive profile selector", true],
+  ["show_charge_speed", "Charging speed badge", true],
+  ["show_last_seen", "Last seen line", true],
+  ["show_live_data", "Live data link", true],
+  ["show_options", "Options button", true],
+  ["show_live_data_button", "Live data button (alternative to the link)", false],
 ];
 
 const DISPLAY_SCHEMA = DISPLAY_OPTIONS.map(([name]) => ({
@@ -84,7 +85,7 @@ export class AbrpVehicleCardEditor extends LitElement {
 
   _displayData() {
     return Object.fromEntries(
-      DISPLAY_OPTIONS.map(([key]) => [key, this._config[key] !== false])
+      DISPLAY_OPTIONS.map(([key, , def]) => [key, this._config[key] ?? def])
     );
   }
 
@@ -97,9 +98,9 @@ export class AbrpVehicleCardEditor extends LitElement {
     };
     if (!config.device) delete config.device;
     if (!config.title) delete config.title;
-    // Shown is the default; only persist explicit "hidden".
-    for (const [key] of DISPLAY_OPTIONS) {
-      if (config[key] !== false) delete config[key];
+    // Only persist deviations from each option's default.
+    for (const [key, , def] of DISPLAY_OPTIONS) {
+      if (config[key] === def || config[key] === undefined) delete config[key];
     }
     this._config = config;
     this.dispatchEvent(
