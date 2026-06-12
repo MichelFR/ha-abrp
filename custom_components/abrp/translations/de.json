@@ -1,0 +1,116 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit ABRP verbinden",
+        "description": "Scanne diesen QR-Code oder öffne den Link unten in der A Better Route Planner App oder in einem Browser, in dem du angemeldet bist, und bestätige die Verbindung. Diese Seite fährt automatisch fort, sobald die Verbindung bestätigt wurde.\n\n{qr}\n\n[Verbindungslink öffnen]({connect_url})"
+      }
+    },
+    "progress": {
+      "waiting_for_authorization": "Scanne diesen QR-Code oder öffne den Link unten in der A Better Route Planner App oder in einem Browser, in dem du angemeldet bist, und bestätige die Verbindung. Diese Seite fährt automatisch fort, sobald die Verbindung bestätigt wurde.\n\n{qr}\n\n[Verbindungslink öffnen]({connect_url})"
+    },
+    "abort": {
+      "cannot_connect": "Verbindung zu ABRP fehlgeschlagen.",
+      "not_authorized": "Die Verbindung wurde nicht rechtzeitig bestätigt. Bitte starte erneut.",
+      "already_configured": "Dieses ABRP-Konto ist bereits eingerichtet.",
+      "wrong_account": "Das bestätigte Konto stimmt nicht mit dem erneut anzumeldenden Konto überein.",
+      "reauth_successful": "Die erneute Anmeldung war erfolgreich."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "soc": { "name": "Ladestand" },
+      "soe": { "name": "Energiestand" },
+      "soh": { "name": "Batteriezustand" },
+      "power": { "name": "Leistung" },
+      "charging_power": { "name": "Ladeleistung" },
+      "hvac_power": { "name": "Klimatisierungsleistung" },
+      "charging_state": {
+        "name": "Ladestatus",
+        "state": {
+          "not_charging": "Lädt nicht",
+          "charging_ac": "Lädt (AC)",
+          "charging_dc": "Lädt (DC)",
+          "charging_unknown": "Lädt"
+        }
+      },
+      "driving_state": {
+        "name": "Fahrstatus",
+        "state": {
+          "driving": "Fährt",
+          "parked": "Geparkt",
+          "idle": "Inaktiv"
+        }
+      },
+      "speed": { "name": "Geschwindigkeit" },
+      "heading": { "name": "Fahrtrichtung" },
+      "odometer": { "name": "Kilometerstand" },
+      "range": { "name": "Geschätzte Reichweite" },
+      "elevation": { "name": "Höhe" },
+      "voltage": { "name": "Spannung" },
+      "current": { "name": "Stromstärke" },
+      "charge_energy_added": { "name": "Geladene Energie" },
+      "external_temp": { "name": "Außentemperatur" },
+      "battery_temp": { "name": "Batterietemperatur" },
+      "cabin_temp": { "name": "Innenraumtemperatur" },
+      "cabin_set_point": { "name": "Innenraum-Solltemperatur" },
+      "vehicle_temp": { "name": "Fahrzeugtemperatur" },
+      "battery_capacity": { "name": "Batteriekapazität" },
+      "reference_consumption": { "name": "Referenzverbrauch" },
+      "calibration_confidence": { "name": "Kalibrierungsvertrauen" },
+      "speed_factor": { "name": "Geschwindigkeitsfaktor" },
+      "charger_id": { "name": "Ladesäulen-ID" },
+      "max_speed": { "name": "Höchstgeschwindigkeit" },
+      "weight": { "name": "Gewicht" },
+      "last_update": { "name": "Letzte Aktualisierung" },
+      "data_source": { "name": "Datenquelle" },
+      "source_last_refresh": { "name": "{source} letzte Aktualisierung" },
+      "obd_last_refresh": { "name": "OBD letzte Aktualisierung" },
+      "vehicle_name": { "name": "Fahrzeugname" }
+    },
+    "binary_sensor": {
+      "charging": { "name": "Lädt" },
+      "driving": { "name": "Fährt" },
+      "parked": { "name": "Geparkt" },
+      "dc_charging": { "name": "DC-Schnellladen" },
+      "plugged_in": { "name": "Eingesteckt" },
+      "asleep": { "name": "Schläft" },
+      "source_connected": { "name": "{source} verbunden" },
+      "obd_connected": { "name": "OBD verbunden" },
+      "realtime_connected": { "name": "Echtzeit verbunden" }
+    },
+    "device_tracker": {
+      "location": { "name": "Standort" }
+    },
+    "image": {
+      "car_image": { "name": "Fahrzeugbild" }
+    },
+    "number": {
+      "arrival_soc": { "name": "Ziel-Ladestand" },
+      "min_charger_stalls": { "name": "Minimale Ladepunkte" },
+      "extra_weight": { "name": "Zusatzgewicht" }
+    },
+    "switch": {
+      "avoid_tolls": { "name": "Maut vermeiden" },
+      "avoid_ferries": { "name": "Fähren vermeiden" },
+      "avoid_borders": { "name": "Grenzübertritte vermeiden" },
+      "avoid_motorways": { "name": "Autobahnen vermeiden" },
+      "realtime_traffic": { "name": "Echtzeitverkehr" },
+      "realtime_weather": { "name": "Echtzeitwetter" },
+      "adjust_speed": { "name": "Geschwindigkeit an Limits anpassen" }
+    },
+    "select": {
+      "charge_stops": {
+        "name": "Ladestopps",
+        "state": {
+          "optimal": "Optimal",
+          "fewer": "Weniger",
+          "least": "Wenigste"
+        }
+      },
+      "drive_profile": {
+        "name": "Fahrprofil"
+      }
+    }
+  }
+}

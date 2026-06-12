@@ -2,20 +2,29 @@
 
 import { html } from "lit";
 import { cap } from "../format.js";
+import { localize } from "../localize.js";
 
-const STOP_LABELS = { optimal: "Optimal", fewer: "Fewer", least: "Fewest" };
+const STOP_KEYS = {
+  optimal: "options.optimal",
+  fewer: "options.fewer",
+  least: "options.least",
+};
 
 const AVOID_CHIPS = [
-  ["switch.avoid_tolls", "mdi:cash-multiple", "Tolls"],
-  ["switch.avoid_motorways", "mdi:highway", "Highways"],
-  ["switch.avoid_ferries", "mdi:ferry", "Ferries and car trains"],
-  ["switch.avoid_borders", "mdi:boom-gate", "Borders"],
+  ["switch.avoid_tolls", "mdi:cash-multiple", "options.tolls"],
+  ["switch.avoid_motorways", "mdi:highway", "options.highways"],
+  ["switch.avoid_ferries", "mdi:ferry", "options.ferries"],
+  ["switch.avoid_borders", "mdi:boom-gate", "options.borders"],
 ];
 
 const REALTIME_SWITCHES = [
-  ["switch.realtime_traffic", "mdi:traffic-light", "Realtime traffic"],
-  ["switch.realtime_weather", "mdi:weather-partly-cloudy", "Realtime weather"],
-  ["switch.adjust_speed", "mdi:speedometer", "Adjust speed to limits"],
+  ["switch.realtime_traffic", "mdi:traffic-light", "options.traffic"],
+  [
+    "switch.realtime_weather",
+    "mdi:weather-partly-cloudy",
+    "options.weather",
+  ],
+  ["switch.adjust_speed", "mdi:speedometer", "options.adjust_speed"],
 ];
 
 const section = (icon, label) =>
@@ -25,25 +34,28 @@ export function renderOptionsDialog(card) {
   const chargeStops = card._as("select.charge_stops");
   const profile = card._vs("select.drive_profile");
 
+  const t = (key) => localize(card.hass, key);
   return html`
     ${chargeStops ? renderChargeStops(card, chargeStops) : ""}
-    ${renderSliderRow(card, "Destination arrival SoC", "mdi:battery-low", card._as("number.arrival_soc"), "%")}
-    ${section("mdi:cancel", "Avoid on route")}
+    ${renderSliderRow(card, t("options.arrival_soc"), "mdi:battery-low", card._as("number.arrival_soc"), "%")}
+    ${section("mdi:cancel", t("options.avoid"))}
     <div class="chips">
-      ${AVOID_CHIPS.map(([key, icon, label]) => renderChip(card, key, icon, label))}
+      ${AVOID_CHIPS.map(([key, icon, label]) =>
+        renderChip(card, key, icon, t(label))
+      )}
     </div>
-    ${section("mdi:update", "Realtime")}
+    ${section("mdi:update", t("options.realtime"))}
     ${REALTIME_SWITCHES.map(([key, icon, label]) =>
-      renderSwitchRow(card, key, icon, label)
+      renderSwitchRow(card, key, icon, t(label))
     )}
-    ${renderSliderRow(card, "Minimum charger stalls", "mdi:counter", card._as("number.min_charger_stalls"), "")}
-    ${renderSliderRow(card, "Extra weight", "mdi:weight-kilogram", card._as("number.extra_weight"), " kg")}
+    ${renderSliderRow(card, t("options.stalls"), "mdi:counter", card._as("number.min_charger_stalls"), "")}
+    ${renderSliderRow(card, t("options.extra_weight"), "mdi:weight-kilogram", card._as("number.extra_weight"), " kg")}
     ${renderDriveProfile(card, profile)}
   `;
 }
 
 function renderChargeStops(card, chargeStops) {
-  return html`${section("mdi:ev-station", "Charge stops")}
+  return html`${section("mdi:ev-station", localize(card.hass, "options.charge_stops"))}
     <div class="segments">
       ${(chargeStops.attributes.options || []).map(
         (opt) => html`<button
@@ -51,7 +63,7 @@ function renderChargeStops(card, chargeStops) {
           @click=${() =>
             card._call("select", "select_option", chargeStops, { option: opt })}
         >
-          ${STOP_LABELS[opt] || cap(opt)}
+          ${STOP_KEYS[opt] ? localize(card.hass, STOP_KEYS[opt]) : cap(opt)}
         </button>`
       )}
     </div>`;
@@ -111,7 +123,7 @@ function renderSwitchRow(card, key, icon, label) {
 
 function renderDriveProfile(card, profile) {
   if (!profile?.attributes?.options?.length) return "";
-  return html`${section("mdi:car-cog", "Drive profile")}
+  return html`${section("mdi:car-cog", localize(card.hass, "options.drive_profile"))}
     <ha-select
       naturalMenuWidth
       fixedMenuPosition

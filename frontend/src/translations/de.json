@@ -1,0 +1,131 @@
+{
+  "card": {
+    "vehicle": "Fahrzeug",
+    "no_vehicle": "Kein ABRP-Fahrzeug gefunden — richte zuerst die ABRP-Integration ein.",
+    "last_seen": "Zuletzt gesehen {time}",
+    "never_seen": "Nie gesehen",
+    "live_data": "Live-Daten",
+    "options": "Optionen",
+    "charging": "Lädt"
+  },
+  "time": {
+    "just_now": "gerade eben",
+    "min_ago": "vor {n} Min.",
+    "h_ago": "vor {n} Std.",
+    "d_ago": "vor {n} Tagen"
+  },
+  "confirm": {
+    "title": "Fahrprofil wechseln?",
+    "text": "Das aktive Fahrprofil wird in ABRP von „{from}“ zu „{to}“ geändert.",
+    "cancel": "Abbrechen",
+    "switch": "Wechseln"
+  },
+  "options": {
+    "title": "Planungsoptionen",
+    "charge_stops": "Ladestopps",
+    "optimal": "Optimal",
+    "fewer": "Weniger",
+    "least": "Wenigste",
+    "arrival_soc": "Ziel-Ladestand",
+    "avoid": "Auf der Route vermeiden",
+    "tolls": "Maut",
+    "highways": "Autobahnen",
+    "ferries": "Fähren und Autozüge",
+    "borders": "Grenzen",
+    "realtime": "Echtzeit",
+    "traffic": "Echtzeitverkehr",
+    "weather": "Echtzeitwetter",
+    "adjust_speed": "Geschwindigkeit an Limits anpassen",
+    "stalls": "Minimale Ladepunkte",
+    "extra_weight": "Zusatzgewicht",
+    "drive_profile": "Fahrprofil"
+  },
+  "live": {
+    "title": "Live-Daten",
+    "soc": "Ladestand",
+    "range": "Reichweite",
+    "ref_consumption": "Kalibrierter Referenzverbrauch",
+    "capacity": "Batteriekapazität",
+    "odometer": "Kilometerstand",
+    "location": "Standort",
+    "ref_speed": "Referenzgeschwindigkeit",
+    "max_speed": "Höchstgeschwindigkeit",
+    "elevation": "Höhe",
+    "estimate": "ABRP-Schätzung"
+  },
+  "editor": {
+    "vehicle": "Fahrzeug (leer = erstes ABRP-Fahrzeug)",
+    "auto_name": "ABRP-Fahrzeugname",
+    "automatic": "Automatisch",
+    "nothing_shown": "Nichts angezeigt",
+    "shown": "Angezeigt",
+    "overridden": "{n} überschrieben",
+    "mode_auto": "Automatisch",
+    "mode_entity": "Entität",
+    "mode_custom": "Benutzerdefiniert",
+    "entity": "Entität",
+    "value_template": "Wert oder Template",
+    "custom_name": "Eigener Name oder Template",
+    "name": "Name",
+    "not_found": "nicht gefunden",
+    "auto_value": "Automatisch: {value}"
+  },
+  "page": {
+    "title": "Titel",
+    "illustration": "Fahrzeugbild",
+    "profile": "Fahrprofil",
+    "battery": "Batterie & Laden",
+    "status": "Statuszeile",
+    "buttons": "Schaltflächen",
+    "livedata": "Live-Daten"
+  },
+  "toggle": {
+    "show_image": "Fahrzeugbild anzeigen",
+    "show_profile": "Fahrprofil-Auswahl anzeigen",
+    "confirm_profile_change": "Vor Wechsel bestätigen",
+    "show_charge_speed": "Ladeleistungs-Badge anzeigen",
+    "show_last_seen": "Zuletzt gesehen anzeigen",
+    "show_live_data": "Live-Daten-Link anzeigen",
+    "show_options": "Optionen-Schaltfläche anzeigen",
+    "show_live_data_button": "Live-Daten-Schaltfläche anzeigen"
+  },
+  "short": {
+    "show_image": "Fahrzeugbild",
+    "show_profile": "Auswahl",
+    "confirm_profile_change": "Bestätigung",
+    "show_charge_speed": "Ladeleistung",
+    "show_last_seen": "Zuletzt gesehen",
+    "show_live_data": "Live-Daten-Link",
+    "show_options": "Optionen",
+    "show_live_data_button": "Live-Daten-Schaltfläche"
+  },
+  "slot": {
+    "image": {
+      "car_image": "Fahrzeugbild"
+    },
+    "select": {
+      "drive_profile": "Fahrprofil"
+    },
+    "binary_sensor": {
+      "charging": "Lädt"
+    },
+    "device_tracker": {
+      "location": "Standort"
+    },
+    "sensor": {
+      "soc": "Ladestand",
+      "charging_power": "Ladeleistung",
+      "last_update": "Letzte Aktualisierung",
+      "range": "Reichweite",
+      "reference_consumption": "Referenzverbrauch",
+      "battery_capacity": "Batteriekapazität",
+      "odometer": "Kilometerstand",
+      "speed_factor": "Geschwindigkeitsfaktor",
+      "max_speed": "Höchstgeschwindigkeit",
+      "elevation": "Höhe",
+      "data_source": "Datenquelle",
+      "source_last_refresh": "Cloud letzte Aktualisierung",
+      "obd_last_refresh": "OBD letzte Aktualisierung"
+    }
+  }
+}

@@ -1,13 +1,19 @@
 /* Value formatting helpers. */
 
-export function relTime(iso) {
+import { localize } from "./localize.js";
+
+export function relTime(iso, hass) {
   if (!iso) return null;
   const secs = (Date.now() - new Date(iso).getTime()) / 1000;
   if (Number.isNaN(secs)) return null;
-  if (secs < 90) return "just now";
-  if (secs < 5400) return `${Math.round(secs / 60)} min ago`;
-  if (secs < 129600) return `${Math.round(secs / 3600)} h ago`;
-  return `${Math.round(secs / 86400)} d ago`;
+  if (secs < 90) return localize(hass, "time.just_now");
+  if (secs < 5400) {
+    return localize(hass, "time.min_ago", { n: Math.round(secs / 60) });
+  }
+  if (secs < 129600) {
+    return localize(hass, "time.h_ago", { n: Math.round(secs / 3600) });
+  }
+  return localize(hass, "time.d_ago", { n: Math.round(secs / 86400) });
 }
 
 export function cap(s) {

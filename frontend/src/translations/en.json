@@ -1,0 +1,131 @@
+{
+  "card": {
+    "vehicle": "Vehicle",
+    "no_vehicle": "No ABRP vehicle found — set up the ABRP integration first.",
+    "last_seen": "Last seen {time}",
+    "never_seen": "Never seen",
+    "live_data": "Live data",
+    "options": "Options",
+    "charging": "Charging"
+  },
+  "time": {
+    "just_now": "just now",
+    "min_ago": "{n} min ago",
+    "h_ago": "{n} h ago",
+    "d_ago": "{n} d ago"
+  },
+  "confirm": {
+    "title": "Switch drive profile?",
+    "text": "This changes the active drive profile from \"{from}\" to \"{to}\" in ABRP.",
+    "cancel": "Cancel",
+    "switch": "Switch"
+  },
+  "options": {
+    "title": "Plan options",
+    "charge_stops": "Charge stops",
+    "optimal": "Optimal",
+    "fewer": "Fewer",
+    "least": "Fewest",
+    "arrival_soc": "Destination arrival SoC",
+    "avoid": "Avoid on route",
+    "tolls": "Tolls",
+    "highways": "Highways",
+    "ferries": "Ferries and car trains",
+    "borders": "Borders",
+    "realtime": "Realtime",
+    "traffic": "Realtime traffic",
+    "weather": "Realtime weather",
+    "adjust_speed": "Adjust speed to limits",
+    "stalls": "Minimum charger stalls",
+    "extra_weight": "Extra weight",
+    "drive_profile": "Drive profile"
+  },
+  "live": {
+    "title": "Live data",
+    "soc": "SoC",
+    "range": "Range",
+    "ref_consumption": "Calibrated reference consumption",
+    "capacity": "Battery capacity",
+    "odometer": "Odometer",
+    "location": "Location",
+    "ref_speed": "Reference speed",
+    "max_speed": "Maximum speed",
+    "elevation": "Elevation",
+    "estimate": "ABRP Estimate"
+  },
+  "editor": {
+    "vehicle": "Vehicle (empty = first ABRP vehicle)",
+    "auto_name": "ABRP vehicle name",
+    "automatic": "Automatic",
+    "nothing_shown": "Nothing shown",
+    "shown": "Shown",
+    "overridden": "{n} overridden",
+    "mode_auto": "Automatic",
+    "mode_entity": "Entity",
+    "mode_custom": "Custom",
+    "entity": "Entity",
+    "value_template": "Value or template",
+    "custom_name": "Custom name or template",
+    "name": "Name",
+    "not_found": "not found",
+    "auto_value": "Automatic: {value}"
+  },
+  "page": {
+    "title": "Title",
+    "illustration": "Vehicle illustration",
+    "profile": "Drive profile",
+    "battery": "Battery & charging",
+    "status": "Status line",
+    "buttons": "Buttons",
+    "livedata": "Live data"
+  },
+  "toggle": {
+    "show_image": "Show car image",
+    "show_profile": "Show drive profile selector",
+    "confirm_profile_change": "Confirm before changing",
+    "show_charge_speed": "Show charging speed badge",
+    "show_last_seen": "Show last seen",
+    "show_live_data": "Show Live data link",
+    "show_options": "Show Options button",
+    "show_live_data_button": "Show Live data button"
+  },
+  "short": {
+    "show_image": "Car image",
+    "show_profile": "Selector",
+    "confirm_profile_change": "Confirm",
+    "show_charge_speed": "Speed badge",
+    "show_last_seen": "Last seen",
+    "show_live_data": "Live data link",
+    "show_options": "Options button",
+    "show_live_data_button": "Live data button"
+  },
+  "slot": {
+    "image": {
+      "car_image": "Car image"
+    },
+    "select": {
+      "drive_profile": "Drive profile"
+    },
+    "binary_sensor": {
+      "charging": "Charging"
+    },
+    "device_tracker": {
+      "location": "Location"
+    },
+    "sensor": {
+      "soc": "State of charge",
+      "charging_power": "Charging power",
+      "last_update": "Last update",
+      "range": "Range",
+      "reference_consumption": "Reference consumption",
+      "battery_capacity": "Battery capacity",
+      "odometer": "Odometer",
+      "speed_factor": "Speed factor",
+      "max_speed": "Maximum speed",
+      "elevation": "Elevation",
+      "data_source": "Data source",
+      "source_last_refresh": "Cloud last refresh",
+      "obd_last_refresh": "OBD last refresh"
+    }
+  }
+}

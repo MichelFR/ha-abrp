@@ -4,6 +4,7 @@ import { LitElement, html } from "lit";
 import { CARD_TYPE } from "./const.js";
 import { accountEntities, entityMap, vehicleDevices } from "./entities.js";
 import { isEntityId, isTemplate, num, relTime } from "./format.js";
+import { localize } from "./localize.js";
 import { ensureHaComponents } from "./ha-components.js";
 import { cardStyles } from "./styles.js";
 import { renderLiveData } from "./views/live-data.js";
@@ -158,6 +159,10 @@ export class AbrpVehicleCard extends LitElement {
     );
   }
 
+  _t(key, vars) {
+    return localize(this.hass, key, vars);
+  }
+
   _call(domain, service, state, data = {}) {
     this.hass.callService(domain, service, {
       entity_id: state.entity_id,
@@ -172,9 +177,7 @@ export class AbrpVehicleCard extends LitElement {
     const vehicle = this._vehicle;
     if (!vehicle) {
       return html`<ha-card>
-        <div class="empty">
-          No ABRP vehicle found — set up the ABRP integration first.
-        </div>
+        <div class="empty">${this._t("card.no_vehicle")}</div>
       </ha-card>`;
     }
     this._vmap = entityMap(this.hass, vehicle.ents);
@@ -183,10 +186,10 @@ export class AbrpVehicleCard extends LitElement {
     return html`<ha-card>
       ${this._renderMain(vehicle)}
       ${this._dialog === "options"
-        ? this._dialogFrame("Plan options", renderOptionsDialog(this))
+        ? this._dialogFrame(this._t("options.title"), renderOptionsDialog(this))
         : ""}
       ${this._dialog === "live"
-        ? this._dialogFrame("Live data", renderLiveData(this))
+        ? this._dialogFrame(this._t("live.title"), renderLiveData(this))
         : ""}
       ${this._confirmProfile ? this._renderConfirmProfile() : ""}
     </ha-card>`;
@@ -206,7 +209,7 @@ export class AbrpVehicleCard extends LitElement {
         : null) ||
       vehicle.device?.name_by_user ||
       vehicle.device?.name ||
-      "Vehicle";
+      this._t("card.vehicle");
     const socState = this._vs("sensor.soc");
     const soc = num(socState);
     const image = this._vs("image.car_image");
@@ -216,7 +219,7 @@ export class AbrpVehicleCard extends LitElement {
       (image.state.startsWith("http") || image.state.startsWith("/"))
         ? image.state
         : null);
-    const lastSeen = relTime(this._vs("sensor.last_update")?.state);
+    const lastSeen = relTime(this._vs("sensor.last_update")?.state, this.hass);
     const charging = this._vs("binary_sensor.charging")?.state === "on";
     const power = Number(this._vs("sensor.charging_power")?.state);
     const chargeSpeed =
@@ -261,7 +264,7 @@ export class AbrpVehicleCard extends LitElement {
             </span>`
           : show("show_charge_speed") && charging
             ? html`<span class="charge-speed">
-                <ha-icon icon="mdi:flash"></ha-icon>Charging
+                <ha-icon icon="mdi:flash"></ha-icon>${this._t("card.charging")}
               </span>`
             : ""}
       </div>
@@ -276,12 +279,14 @@ export class AbrpVehicleCard extends LitElement {
                   @click=${() => this._moreInfo("sensor.last_update")}
                 >
                   <span class="dot"></span>
-                  ${lastSeen ? `Last seen ${lastSeen}` : "Never seen"}
+                  ${lastSeen
+                    ? this._t("card.last_seen", { time: lastSeen })
+                    : this._t("card.never_seen")}
                 </span>`
               : html`<span></span>`}
             ${show("show_live_data")
               ? html`<a class="link" @click=${() => (this._dialog = "live")}
-                  >Live data</a
+                  >${this._t("card.live_data")}</a
                 >`
               : ""}
           </div>`
@@ -293,12 +298,16 @@ export class AbrpVehicleCard extends LitElement {
                   class="btn"
                   @click=${() => (this._dialog = "options")}
                 >
-                  <ha-icon icon="mdi:tune-variant"></ha-icon>Options
+                  <ha-icon icon="mdi:tune-variant"></ha-icon>${this._t(
+                    "card.options"
+                  )}
                 </button>`
               : ""}
             ${this._config.show_live_data_button === true
               ? html`<button class="btn" @click=${() => (this._dialog = "live")}>
-                  <ha-icon icon="mdi:chart-box-outline"></ha-icon>Live data
+                  <ha-icon icon="mdi:chart-box-outline"></ha-icon>${this._t(
+                    "card.live_data"
+                  )}
                 </button>`
               : ""}
           </div>`
@@ -364,20 +373,19 @@ export class AbrpVehicleCard extends LitElement {
       open
       class="confirm"
       width="small"
-      header-title="Switch drive profile?"
+      header-title=${this._t("confirm.title")}
       @closed=${() => (this._confirmProfile = null)}
     >
       <div class="confirm-body">
         <div class="confirm-text">
-          This changes the active drive profile from "${state.state}" to
-          "${option}" in ABRP.
+          ${this._t("confirm.text", { from: state.state, to: option })}
         </div>
         <div class="confirm-actions">
           <button
             class="text-btn"
             @click=${() => (this._confirmProfile = null)}
           >
-            Cancel
+            ${this._t("confirm.cancel")}
           </button>
           <button
             class="filled-btn"
@@ -386,7 +394,7 @@ export class AbrpVehicleCard extends LitElement {
               this._confirmProfile = null;
             }}
           >
-            Switch
+            ${this._t("confirm.switch")}
           </button>
         </div>
       </div>
