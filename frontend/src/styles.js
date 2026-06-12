@@ -231,41 +231,12 @@ export const cardStyles = css`
     --mdc-icon-size: 18px;
   }
   /* dialogs */
-  ha-dialog {
-    --mdc-dialog-min-width: min(420px, 95vw);
-    --mdc-dialog-max-width: 480px;
-  }
-  .dlg-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px 0;
-  }
-  .dlg-title {
-    font-size: 1.2em;
-    font-weight: 700;
-    flex: 1;
-    text-align: center;
-    margin-left: 34px;
-  }
   .dlg-body {
     padding: 0 4px 8px;
   }
   /* MD3-style confirmation dialog on HA theme tokens */
-  ha-dialog.confirm {
-    --ha-dialog-border-radius: 28px;
-    --mdc-dialog-min-width: min(360px, 90vw);
-    --mdc-dialog-max-width: 420px;
-  }
   .confirm-body {
-    padding: 8px 4px 0;
-  }
-  .confirm-title {
-    font-size: 1.4em;
-    font-weight: 500;
-    line-height: 1.3;
-    color: var(--primary-text-color);
-    margin-bottom: 14px;
+    padding: 4px 4px 0;
   }
   .confirm-text {
     color: var(--secondary-text-color);
