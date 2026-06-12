@@ -448,6 +448,12 @@ export class AbrpVehicleCardEditor extends LitElement {
         align-items: center;
         gap: 8px;
         margin-bottom: 12px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card-background-color, var(--ha-card-background));
+        padding: 8px 0;
+        margin-top: -8px;
       }
       .back {
         display: flex;
