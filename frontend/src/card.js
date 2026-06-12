@@ -54,7 +54,11 @@ export class AbrpVehicleCard extends LitElement {
     const vehicles = vehicleDevices(this.hass);
     if (!vehicles.length) return null;
     if (this._config.device) {
-      return vehicles.find((v) => v.deviceId === this._config.device) || null;
+      // Fall back to the first vehicle if the configured device is not a
+      // vehicle (e.g. the account device was picked in the selector).
+      return (
+        vehicles.find((v) => v.deviceId === this._config.device) || vehicles[0]
+      );
     }
     return vehicles[0];
   }

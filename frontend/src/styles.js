@@ -374,10 +374,3 @@ export const cardStyles = css`
     }
   }
 `;
-
-export const editorStyles = css`
-  ha-select {
-    width: 100%;
-    margin-top: 8px;
-  }
-`;
