@@ -466,7 +466,7 @@ var $="abrp-vehicle-card",k="abrp";var L=globalThis,D=L.ShadowRoot&&(L.ShadyCSS=
         <div class="empty">
           No ABRP vehicle found — set up the ABRP integration first.
         </div>
-      </ha-card>`}_renderMain(e){let t=this._vs("sensor.vehicle_name")?.state,s=(t&&t!=="unknown"&&t!=="unavailable"?t:null)||e.device?.name_by_user||e.device?.name||"Vehicle",r=this._vs("sensor.soc"),o=g(r),n=this._vs("image.car_image"),h=I(this._vs("sensor.last_update")?.state),a=this._vs("binary_sensor.charging")?.state==="on",c=Number(this._vs("sensor.charging_power")?.state),p=a&&Number.isFinite(c)&&c>0?`${c<10?c.toFixed(1):Math.round(c)} kW`:null;return l`<div class="main">
+      </ha-card>`}_renderMain(e){let t=this._vs("sensor.vehicle_name")?.state,s=this._config.title||(t&&t!=="unknown"&&t!=="unavailable"?t:null)||e.device?.name_by_user||e.device?.name||"Vehicle",r=this._vs("sensor.soc"),o=g(r),n=this._vs("image.car_image"),h=I(this._vs("sensor.last_update")?.state),a=this._vs("binary_sensor.charging")?.state==="on",c=Number(this._vs("sensor.charging_power")?.state),p=a&&Number.isFinite(c)&&c>0?`${c<10?c.toFixed(1):Math.round(c)} kW`:null;return l`<div class="main">
       <div class="head">
         <div class="head-left">
           <div class="name">${s}</div>
@@ -544,13 +544,13 @@ var $="abrp-vehicle-card",k="abrp";var L=globalThis,D=L.ShadowRoot&&(L.ShadyCSS=
         <a class="link" @click=${()=>this._dialog=null}>Done</a>
       </div>
       <div class="dlg-body">${t}</div>
-    </ha-dialog>`}};var et=[{name:"device",selector:{device:{integration:k,entity:[{integration:k,domain:"device_tracker"}]}}}],F=class extends f{static get properties(){return{hass:{},_config:{}}}setConfig(e){this._config=e||{}}render(){return this.hass?l`<ha-form
+    </ha-dialog>`}};var et=[{name:"title",selector:{text:{}}},{name:"device",selector:{device:{integration:k,entity:[{integration:k,domain:"device_tracker"}]}}}],F=class extends f{static get properties(){return{hass:{},_config:{}}}setConfig(e){this._config=e||{}}render(){return this.hass?l`<ha-form
       .hass=${this.hass}
       .data=${this._config}
       .schema=${et}
-      .computeLabel=${()=>"Vehicle (empty = first ABRP vehicle)"}
+      .computeLabel=${e=>e.name==="title"?"Title (empty = ABRP vehicle name)":"Vehicle (empty = first ABRP vehicle)"}
       @value-changed=${this._valueChanged}
-    ></ha-form>`:l``}_valueChanged(e){e.stopPropagation();let t={...this._config,...e.detail.value,type:`custom:${$}`};t.device||delete t.device,this._config=t,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:t},bubbles:!0,composed:!0}))}};customElements.define($,B);customElements.define(`${$}-editor`,F);window.customCards=window.customCards||[];window.customCards.push({type:$,name:"ABRP Vehicle Card",description:"ABRP-style vehicle card with battery state, live data and plan options.",preview:!0,documentationURL:"https://github.com/MichelFR/ha-abrp"});
+    ></ha-form>`:l``}_valueChanged(e){e.stopPropagation();let t={...this._config,...e.detail.value,type:`custom:${$}`};t.device||delete t.device,t.title||delete t.title,this._config=t,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:t},bubbles:!0,composed:!0}))}};customElements.define($,B);customElements.define(`${$}-editor`,F);window.customCards=window.customCards||[];window.customCards.push({type:$,name:"ABRP Vehicle Card",description:"ABRP-style vehicle card with battery state, live data and plan options.",preview:!0,documentationURL:"https://github.com/MichelFR/ha-abrp"});
 /*! Bundled license information:
 
 @lit/reactive-element/css-tag.js:

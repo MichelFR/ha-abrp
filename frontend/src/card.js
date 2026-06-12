@@ -122,6 +122,7 @@ export class AbrpVehicleCard extends LitElement {
   _renderMain(vehicle) {
     const abrpName = this._vs("sensor.vehicle_name")?.state;
     const name =
+      this._config.title ||
       (abrpName && abrpName !== "unknown" && abrpName !== "unavailable"
         ? abrpName
         : null) ||

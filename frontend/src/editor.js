@@ -6,6 +6,7 @@ import { LitElement, html } from "lit";
 import { CARD_TYPE, PLATFORM } from "./const.js";
 
 const SCHEMA = [
+  { name: "title", selector: { text: {} } },
   {
     name: "device",
     selector: {
@@ -34,7 +35,10 @@ export class AbrpVehicleCardEditor extends LitElement {
       .hass=${this.hass}
       .data=${this._config}
       .schema=${SCHEMA}
-      .computeLabel=${() => "Vehicle (empty = first ABRP vehicle)"}
+      .computeLabel=${(schema) =>
+        schema.name === "title"
+          ? "Title (empty = ABRP vehicle name)"
+          : "Vehicle (empty = first ABRP vehicle)"}
       @value-changed=${this._valueChanged}
     ></ha-form>`;
   }
@@ -47,6 +51,7 @@ export class AbrpVehicleCardEditor extends LitElement {
       type: `custom:${CARD_TYPE}`,
     };
     if (!config.device) delete config.device;
+    if (!config.title) delete config.title;
     this._config = config;
     this.dispatchEvent(
       new CustomEvent("config-changed", {
