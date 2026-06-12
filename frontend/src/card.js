@@ -140,13 +140,15 @@ export class AbrpVehicleCard extends LitElement {
         ? `${power < 10 ? power.toFixed(1) : Math.round(power)} kW`
         : null;
 
+    const show = (key) => this._config[key] !== false;
+
     return html`<div class="main">
       <div class="head">
         <div class="head-left">
           <div class="name">${name}</div>
-          ${this._renderProfile()}
+          ${show("show_profile") ? this._renderProfile() : ""}
         </div>
-        ${image?.attributes?.entity_picture
+        ${show("show_image") && image?.attributes?.entity_picture
           ? html`<img
               class="car clickable"
               src="${image.attributes.entity_picture}"
@@ -163,7 +165,7 @@ export class AbrpVehicleCard extends LitElement {
             ></ha-state-icon>`
           : html`<ha-icon icon="mdi:battery"></ha-icon>`}
         <span class="soc">${soc ?? "–"}%</span>
-        ${chargeSpeed
+        ${show("show_charge_speed") && chargeSpeed
           ? html`<span
               class="charge-speed clickable"
               @click=${(ev) => {
@@ -173,7 +175,7 @@ export class AbrpVehicleCard extends LitElement {
             >
               <ha-icon icon="mdi:flash"></ha-icon>${chargeSpeed}
             </span>`
-          : charging
+          : show("show_charge_speed") && charging
             ? html`<span class="charge-speed">
                 <ha-icon icon="mdi:flash"></ha-icon>Charging
               </span>`
@@ -182,21 +184,31 @@ export class AbrpVehicleCard extends LitElement {
       <div class="bar clickable" @click=${() => this._moreInfo("sensor.soc")}>
         <div class="fill ${charging ? "charging" : ""}" style="width:${soc ?? 0}%"></div>
       </div>
-      <div class="meta">
-        <span
-          class="seen clickable"
-          @click=${() => this._moreInfo("sensor.last_update")}
-        >
-          <span class="dot"></span>
-          ${lastSeen ? `Last seen ${lastSeen}` : "Never seen"}
-        </span>
-        <a class="link" @click=${() => (this._dialog = "live")}>Live data</a>
-      </div>
-      <div class="buttons">
-        <button class="btn" @click=${() => (this._dialog = "options")}>
-          <ha-icon icon="mdi:tune-variant"></ha-icon>Options
-        </button>
-      </div>
+      ${show("show_last_seen") || show("show_live_data")
+        ? html`<div class="meta">
+            ${show("show_last_seen")
+              ? html`<span
+                  class="seen clickable"
+                  @click=${() => this._moreInfo("sensor.last_update")}
+                >
+                  <span class="dot"></span>
+                  ${lastSeen ? `Last seen ${lastSeen}` : "Never seen"}
+                </span>`
+              : html`<span></span>`}
+            ${show("show_live_data")
+              ? html`<a class="link" @click=${() => (this._dialog = "live")}
+                  >Live data</a
+                >`
+              : ""}
+          </div>`
+        : ""}
+      ${show("show_options")
+        ? html`<div class="buttons">
+            <button class="btn" @click=${() => (this._dialog = "options")}>
+              <ha-icon icon="mdi:tune-variant"></ha-icon>Options
+            </button>
+          </div>`
+        : ""}
     </div>`;
   }
 
