@@ -8,7 +8,14 @@ import { CARD_TYPE, PLATFORM } from "./const.js";
 const SCHEMA = [
   {
     name: "device",
-    selector: { device: { integration: PLATFORM } },
+    selector: {
+      device: {
+        integration: PLATFORM,
+        // Only vehicles carry a device tracker; this hides the account
+        // (planning settings) device from the picker.
+        entity: [{ integration: PLATFORM, domain: "device_tracker" }],
+      },
+    },
   },
 ];
 
