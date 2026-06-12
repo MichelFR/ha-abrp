@@ -1,12 +1,11 @@
-/* Visual editor with a segmented button group: General (title + vehicle)
- * and Display (which card sections are shown, with one switch row each). */
+/* Visual editor with subpages: the root shows the vehicle picker and a list
+ * of settings groups; each row opens a subpage with its own options. */
 
 import { LitElement, html, css } from "lit";
 import { CARD_TYPE, PLATFORM } from "./const.js";
 import { ensureHaComponents } from "./ha-components.js";
 
-const GENERAL_SCHEMA = [
-  { name: "title", selector: { text: {} } },
+const DEVICE_SCHEMA = [
   {
     name: "device",
     selector: {
@@ -20,36 +19,54 @@ const GENERAL_SCHEMA = [
   },
 ];
 
-const GENERAL_LABELS = {
-  title: "Title (empty = ABRP vehicle name)",
-  device: "Vehicle (empty = first ABRP vehicle)",
+const TITLE_SCHEMA = [{ name: "title", selector: { text: {} } }];
+
+// Toggles: [config key, label, default, icon]. Only deviations from the
+// default are stored in the card config.
+const TOGGLES = {
+  illustration: [["show_image", "Show car image", true, "mdi:image-outline"]],
+  profile: [
+    ["show_profile", "Show drive profile selector", true, "mdi:car-cog"],
+  ],
+  battery: [
+    ["show_charge_speed", "Show charging speed badge", true, "mdi:flash"],
+  ],
+  status: [
+    ["show_last_seen", "Show last seen", true, "mdi:clock-outline"],
+    ["show_live_data", "Show Live data link", true, "mdi:link-variant"],
+  ],
+  buttons: [
+    ["show_options", "Show Options button", true, "mdi:tune-variant"],
+    [
+      "show_live_data_button",
+      "Show Live data button",
+      false,
+      "mdi:chart-box-outline",
+    ],
+  ],
 };
 
-// [config key, label, default, icon] — only deviations from the default are
-// stored in the card config.
-export const DISPLAY_OPTIONS = [
-  ["show_image", "Car image", true, "mdi:image-outline"],
-  ["show_profile", "Drive profile selector", true, "mdi:car-cog"],
-  ["show_charge_speed", "Charging speed badge", true, "mdi:flash"],
-  ["show_last_seen", "Last seen line", true, "mdi:clock-outline"],
-  ["show_live_data", "Live data link", true, "mdi:link-variant"],
-  ["show_options", "Options button", true, "mdi:tune-variant"],
-  [
-    "show_live_data_button",
-    "Live data button (alternative to the link)",
-    false,
-    "mdi:chart-box-outline",
-  ],
+const PAGES = [
+  { id: "title", icon: "mdi:format-title", label: "Title" },
+  {
+    id: "illustration",
+    icon: "mdi:image-outline",
+    label: "Vehicle illustration",
+  },
+  { id: "profile", icon: "mdi:car-cog", label: "Drive profile" },
+  { id: "battery", icon: "mdi:battery-charging", label: "Battery & charging" },
+  { id: "status", icon: "mdi:clock-outline", label: "Status line" },
+  { id: "buttons", icon: "mdi:gesture-tap-button", label: "Buttons" },
 ];
 
 export class AbrpVehicleCardEditor extends LitElement {
   static get properties() {
-    return { hass: {}, _config: {}, _tab: { state: true } };
+    return { hass: {}, _config: {}, _page: { state: true } };
   }
 
   constructor() {
     super();
-    this._tab = "general";
+    this._page = null; // null = root, otherwise a PAGES id
   }
 
   connectedCallback() {
@@ -63,46 +80,86 @@ export class AbrpVehicleCardEditor extends LitElement {
 
   render() {
     if (!this.hass) return html``;
-    const general = this._tab === "general";
-    return html`<div class="segments">
-        <button
-          class="segment ${general ? "on" : ""}"
-          @click=${() => (this._tab = "general")}
-        >
-          <ha-icon icon="mdi:tune"></ha-icon>General
-        </button>
-        <button
-          class="segment ${general ? "" : "on"}"
-          @click=${() => (this._tab = "display")}
-        >
-          <ha-icon icon="mdi:eye-outline"></ha-icon>Display
-        </button>
-      </div>
-      ${general ? this._renderGeneral() : this._renderDisplay()}`;
+    const page = PAGES.find((p) => p.id === this._page);
+    return page ? this._renderSubpage(page) : this._renderRoot();
   }
 
-  _renderGeneral() {
+  /* -- root: vehicle picker + settings list -- */
+
+  _renderRoot() {
     return html`<ha-form
-      .hass=${this.hass}
-      .data=${this._config}
-      .schema=${GENERAL_SCHEMA}
-      .computeLabel=${(schema) => GENERAL_LABELS[schema.name] ?? schema.name}
-      @value-changed=${this._valueChanged}
-    ></ha-form>`;
+        .hass=${this.hass}
+        .data=${this._config}
+        .schema=${DEVICE_SCHEMA}
+        .computeLabel=${() => "Vehicle (empty = first ABRP vehicle)"}
+        @value-changed=${this._valueChanged}
+      ></ha-form>
+      <div class="nav">
+        ${PAGES.map(
+          (page) => html`<button
+            class="nav-row"
+            @click=${() => (this._page = page.id)}
+          >
+            <ha-icon class="nav-icon" icon=${page.icon}></ha-icon>
+            <span class="nav-labels">
+              <span class="nav-label">${page.label}</span>
+              <span class="nav-secondary">${this._summary(page.id)}</span>
+            </span>
+            <ha-icon icon="mdi:chevron-right"></ha-icon>
+          </button>`
+        )}
+      </div>`;
   }
 
-  _renderDisplay() {
-    return html`${DISPLAY_OPTIONS.map(
-      ([key, label, def, icon]) => html`<div class="row">
-        <ha-icon icon=${icon}></ha-icon>
-        <span class="row-label">${label}</span>
-        <ha-switch
-          .checked=${this._config[key] ?? def}
-          @change=${(ev) => this._toggleDisplay(key, def, ev.target.checked)}
-        ></ha-switch>
-      </div>`
-    )}`;
+  _summary(pageId) {
+    if (pageId === "title") {
+      return this._config.title || "ABRP vehicle name";
+    }
+    const toggles = TOGGLES[pageId] || [];
+    const shown = toggles.filter(([key, , def]) => this._config[key] ?? def);
+    if (!shown.length) return "Nothing shown";
+    if (shown.length === toggles.length && toggles.length === 1) {
+      return "Shown";
+    }
+    return shown
+      .map(([, label]) => label.replace(/^Show /, ""))
+      .join(", ");
   }
+
+  /* -- subpages -- */
+
+  _renderSubpage(page) {
+    return html`<div class="subpage-head">
+        <button class="back" @click=${() => (this._page = null)}>
+          <ha-icon icon="mdi:chevron-left"></ha-icon>
+        </button>
+        <span class="subpage-title">${page.label}</span>
+      </div>
+      ${page.id === "title"
+        ? html`<ha-form
+            .hass=${this.hass}
+            .data=${this._config}
+            .schema=${TITLE_SCHEMA}
+            .computeLabel=${() => "Title (empty = ABRP vehicle name)"}
+            @value-changed=${this._valueChanged}
+          ></ha-form>`
+        : (TOGGLES[page.id] || []).map(([key, label, def, icon]) =>
+            this._renderToggle(key, label, def, icon)
+          )}`;
+  }
+
+  _renderToggle(key, label, def, icon) {
+    return html`<div class="row">
+      <ha-icon icon=${icon}></ha-icon>
+      <span class="row-label">${label}</span>
+      <ha-switch
+        .checked=${this._config[key] ?? def}
+        @change=${(ev) => this._toggleDisplay(key, def, ev.target.checked)}
+      ></ha-switch>
+    </div>`;
+  }
+
+  /* -- config plumbing -- */
 
   _toggleDisplay(key, def, checked) {
     const config = { ...this._config, type: `custom:${CARD_TYPE}` };
@@ -137,38 +194,73 @@ export class AbrpVehicleCardEditor extends LitElement {
 
   static get styles() {
     return css`
-      .segments {
+      .nav {
         display: flex;
-        background: var(--secondary-background-color);
-        border-radius: 12px;
-        padding: 4px;
-        margin-bottom: 16px;
+        flex-direction: column;
+        margin-top: 16px;
       }
-      .segment {
+      .nav-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        border: none;
+        background: transparent;
+        padding: 12px 6px;
+        cursor: pointer;
+        text-align: left;
+        border-radius: 10px;
+        color: var(--primary-text-color);
+        transition: background-color 0.15s ease;
+      }
+      .nav-row:hover {
+        background: var(--secondary-background-color);
+      }
+      .nav-row ha-icon {
+        color: var(--secondary-text-color);
+        --mdc-icon-size: 20px;
+      }
+      .nav-labels {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .nav-label {
+        font-size: 1em;
+      }
+      .nav-secondary {
+        font-size: 0.85em;
+        color: var(--secondary-text-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 280px;
+      }
+      .subpage-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .back {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
         border: none;
         background: transparent;
         color: var(--primary-text-color);
-        padding: 10px 0;
-        border-radius: 9px;
         cursor: pointer;
-        font-size: 0.95em;
-        transition: background-color 0.15s ease, color 0.15s ease;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        transition: background-color 0.15s ease;
       }
-      .segment:hover:not(.on) {
-        background: rgba(127, 127, 127, 0.18);
+      .back:hover {
+        background: var(--secondary-background-color);
       }
-      .segment.on {
-        background: var(--primary-text-color);
-        color: var(--card-background-color);
+      .subpage-title {
+        font-size: 1.1em;
         font-weight: 600;
-      }
-      .segment ha-icon {
-        --mdc-icon-size: 18px;
       }
       .row {
         display: flex;
