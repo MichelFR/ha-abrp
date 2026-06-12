@@ -119,7 +119,7 @@ function renderDriveProfile(card, profile) {
       @selected=${(ev) => {
         const option = ev.target.value;
         if (option && option !== profile.state) {
-          card._call("select", "select_option", profile, { option });
+          card._requestProfileChange(profile, option);
         }
       }}
       @closed=${(ev) => ev.stopPropagation()}

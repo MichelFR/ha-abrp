@@ -30,6 +30,12 @@ const TOGGLES = {
   illustration: [["show_image", "Show car image", true, "mdi:image-outline"]],
   profile: [
     ["show_profile", "Show drive profile selector", true, "mdi:car-cog"],
+    [
+      "confirm_profile_change",
+      "Confirm before changing",
+      true,
+      "mdi:shield-check-outline",
+    ],
   ],
   battery: [
     ["show_charge_speed", "Show charging speed badge", true, "mdi:flash"],

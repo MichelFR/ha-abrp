@@ -18,6 +18,7 @@ export class AbrpVehicleCard extends LitElement {
       _config: {},
       _dialog: { state: true },
       _profileMenu: { state: true },
+      _confirmProfile: { state: true },
     };
   }
 
@@ -25,6 +26,7 @@ export class AbrpVehicleCard extends LitElement {
     super();
     this._dialog = null; // null | "options" | "live"
     this._profileMenu = false;
+    this._confirmProfile = null; // { state, option } awaiting confirmation
   }
 
   connectedCallback() {
@@ -186,6 +188,7 @@ export class AbrpVehicleCard extends LitElement {
       ${this._dialog === "live"
         ? this._dialogFrame("Live data", renderLiveData(this))
         : ""}
+      ${this._confirmProfile ? this._renderConfirmProfile() : ""}
     </ha-card>`;
   }
 
@@ -342,9 +345,45 @@ export class AbrpVehicleCard extends LitElement {
 
   _selectProfile(profileState, option) {
     this._profileMenu = false;
-    if (option !== profileState.state) {
+    this._requestProfileChange(profileState, option);
+  }
+
+  /* Change the drive profile, asking for confirmation unless disabled. */
+  _requestProfileChange(profileState, option) {
+    if (option === profileState.state) return;
+    if (this._config.confirm_profile_change === false) {
       this._call("select", "select_option", profileState, { option });
+    } else {
+      this._confirmProfile = { state: profileState, option };
     }
+  }
+
+  _renderConfirmProfile() {
+    const { state, option } = this._confirmProfile;
+    return html`<ha-dialog
+      open
+      .heading=${"Switch drive profile?"}
+      @closed=${() => (this._confirmProfile = null)}
+    >
+      <div class="confirm-text">
+        Switch the drive profile from "${state.state}" to "${option}"?
+      </div>
+      <mwc-button
+        slot="secondaryAction"
+        @click=${() => (this._confirmProfile = null)}
+      >
+        Cancel
+      </mwc-button>
+      <mwc-button
+        slot="primaryAction"
+        @click=${() => {
+          this._call("select", "select_option", state, { option });
+          this._confirmProfile = null;
+        }}
+      >
+        Switch
+      </mwc-button>
+    </ha-dialog>`;
   }
 
   _dialogFrame(title, body) {

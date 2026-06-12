@@ -251,6 +251,10 @@ export const cardStyles = css`
   .dlg-body {
     padding: 0 4px 8px;
   }
+  .confirm-text {
+    color: var(--primary-text-color);
+    padding: 4px 4px 0;
+  }
   .section {
     display: flex;
     align-items: center;
