@@ -376,6 +376,7 @@ async def async_setup_entry(
         )
         entities.append(AbrpMateLastUpdateSensor(coordinator, vehicle_id))
         entities.append(AbrpMateDataSourceSensor(coordinator, vehicle_id))
+        entities.append(AbrpMateVehicleNameSensor(coordinator, vehicle_id))
     async_add_entities(entities)
 
 
@@ -453,3 +454,20 @@ class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
             "connected": snapshot.is_connected,
             "providers": snapshot.providers or {},
         }
+
+
+class AbrpMateVehicleNameSensor(AbrpMateEntity, SensorEntity):
+    """The user-configurable vehicle name as set in the ABRP app."""
+
+    _attr_translation_key = "vehicle_name"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:car-info"
+
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
+        super().__init__(coordinator, vehicle_id)
+        self._attr_unique_id = f"{vehicle_id}_vehicle_name"
+
+    @property
+    def native_value(self) -> str | None:
+        vehicle = self.vehicle
+        return vehicle.name if vehicle else None

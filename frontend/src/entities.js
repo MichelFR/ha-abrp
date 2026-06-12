@@ -15,6 +15,7 @@ export const KNOWN_KEYS = {
     "elevation",
     "last_update",
     "data_source",
+    "vehicle_name",
     "source_last_refresh",
     "obd_last_refresh",
   ],
