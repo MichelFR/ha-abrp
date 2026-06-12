@@ -18,3 +18,13 @@ export function num(state, digits = 0) {
   const v = Number(state?.state);
   return Number.isFinite(v) ? v.toFixed(digits) : null;
 }
+
+export function isTemplate(value) {
+  return typeof value === "string" && /\{[{%]/.test(value);
+}
+
+export function isEntityId(value) {
+  return (
+    typeof value === "string" && /^[a-z_]+\.[a-zA-Z0-9_]+$/.test(value)
+  );
+}

@@ -3,6 +3,13 @@
 
 import { LitElement, html, css } from "lit";
 import { CARD_TYPE, PLATFORM } from "./const.js";
+import {
+  OVERRIDABLE_KEYS,
+  accountEntities,
+  entityMap,
+  vehicleDevices,
+} from "./entities.js";
+import { isEntityId, isTemplate } from "./format.js";
 import { ensureHaComponents } from "./ha-components.js";
 
 const DEVICE_SCHEMA = [
@@ -48,6 +55,7 @@ const TOGGLES = {
 
 const PAGES = [
   { id: "title", icon: "mdi:format-title", label: "Title" },
+  { id: "entities", icon: "mdi:shape-outline", label: "Entities" },
   {
     id: "illustration",
     icon: "mdi:image-outline",
@@ -80,8 +88,25 @@ export class AbrpVehicleCardEditor extends LitElement {
 
   render() {
     if (!this.hass) return html``;
+    if (this._page?.startsWith("entity:")) {
+      return this._renderEntityDetail(this._page.slice(7));
+    }
+    if (this._page === "entities") return this._renderEntities();
     const page = PAGES.find((p) => p.id === this._page);
     return page ? this._renderSubpage(page) : this._renderRoot();
+  }
+
+  /* Auto-discovered entity map for the selected (or first) vehicle. */
+  _defaults() {
+    const vehicles = vehicleDevices(this.hass);
+    const vehicle =
+      (this._config.device &&
+        vehicles.find((v) => v.deviceId === this._config.device)) ||
+      vehicles[0];
+    return {
+      ...(vehicle ? entityMap(this.hass, vehicle.ents) : {}),
+      ...entityMap(this.hass, accountEntities(this.hass)),
+    };
   }
 
   /* -- root: vehicle picker + settings list -- */
@@ -115,6 +140,10 @@ export class AbrpVehicleCardEditor extends LitElement {
     if (pageId === "title") {
       return this._config.title || "ABRP vehicle name";
     }
+    if (pageId === "entities") {
+      const count = Object.keys(this._config.entities || {}).length;
+      return count ? `${count} overridden` : "Automatic";
+    }
     const toggles = TOGGLES[pageId] || [];
     const shown = toggles.filter(([key, , def]) => this._config[key] ?? def);
     if (!shown.length) return "Nothing shown";
@@ -129,12 +158,7 @@ export class AbrpVehicleCardEditor extends LitElement {
   /* -- subpages -- */
 
   _renderSubpage(page) {
-    return html`<div class="subpage-head">
-        <button class="back" @click=${() => (this._page = null)}>
-          <ha-icon icon="mdi:chevron-left"></ha-icon>
-        </button>
-        <span class="subpage-title">${page.label}</span>
-      </div>
+    return html`${this._subpageHead(page.label, () => (this._page = null))}
       ${page.id === "title"
         ? html`<ha-form
             .hass=${this.hass}
@@ -156,6 +180,91 @@ export class AbrpVehicleCardEditor extends LitElement {
         .checked=${this._config[key] ?? def}
         @change=${(ev) => this._toggleDisplay(key, def, ev.target.checked)}
       ></ha-switch>
+    </div>`;
+  }
+
+  /* -- entities: list + per-slot detail -- */
+
+  _renderEntities() {
+    const defaults = this._defaults();
+    const overrides = this._config.entities || {};
+    return html`${this._subpageHead("Entities", () => (this._page = null))}
+      <div class="nav">
+        ${OVERRIDABLE_KEYS.map(
+          ([key, label]) => html`<button
+            class="nav-row"
+            @click=${() => (this._page = `entity:${key}`)}
+          >
+            <ha-icon
+              class="nav-icon"
+              icon=${overrides[key]
+                ? "mdi:pencil-circle"
+                : "mdi:circle-small"}
+            ></ha-icon>
+            <span class="nav-labels">
+              <span class="nav-label">${label}</span>
+              <span class="nav-secondary"
+                >${overrides[key] || defaults[key] || "not found"}</span
+              >
+            </span>
+            <ha-icon icon="mdi:chevron-right"></ha-icon>
+          </button>`
+        )}
+      </div>`;
+  }
+
+  _renderEntityDetail(key) {
+    const label =
+      OVERRIDABLE_KEYS.find(([k]) => k === key)?.[1] || key;
+    const override = this._config.entities?.[key] || "";
+    const isEntity = !!override && isEntityId(override) && !isTemplate(override);
+    const defaults = this._defaults();
+    return html`${this._subpageHead(label, () => (this._page = "entities"))}
+      <div class="hint">
+        Default: ${defaults[key] || "none discovered"}
+      </div>
+      <ha-form
+        .hass=${this.hass}
+        .data=${{ entity: isEntity ? override : "" }}
+        .schema=${[{ name: "entity", selector: { entity: {} } }]}
+        .computeLabel=${() => "Entity"}
+        @value-changed=${(ev) => {
+          ev.stopPropagation();
+          this._setOverride(key, ev.detail.value.entity || "");
+        }}
+      ></ha-form>
+      <ha-form
+        .hass=${this.hass}
+        .data=${{ custom: isEntity ? "" : override }}
+        .schema=${[{ name: "custom", selector: { text: {} } }]}
+        .computeLabel=${() => "Custom value or template"}
+        @value-changed=${(ev) => {
+          ev.stopPropagation();
+          this._setOverride(key, ev.detail.value.custom || "");
+        }}
+      ></ha-form>
+      <div class="hint">
+        Pick an entity, enter a fixed value, or a template like
+        <code>{{ states('sensor.example') }}</code>. Leave both empty for
+        the automatic entity.
+      </div>`;
+  }
+
+  _setOverride(key, value) {
+    const entities = { ...(this._config.entities || {}) };
+    if (!value) delete entities[key];
+    else entities[key] = value;
+    const config = { ...this._config, entities, type: `custom:${CARD_TYPE}` };
+    if (!Object.keys(entities).length) delete config.entities;
+    this._dispatch(config);
+  }
+
+  _subpageHead(title, onBack) {
+    return html`<div class="subpage-head">
+      <button class="back" @click=${onBack}>
+        <ha-icon icon="mdi:chevron-left"></ha-icon>
+      </button>
+      <span class="subpage-title">${title}</span>
     </div>`;
   }
 
@@ -275,6 +384,20 @@ export class AbrpVehicleCardEditor extends LitElement {
       .row-label {
         flex: 1;
         color: var(--primary-text-color);
+      }
+      .hint {
+        color: var(--secondary-text-color);
+        font-size: 0.85em;
+        margin: 8px 4px 12px;
+      }
+      .hint code {
+        background: var(--secondary-background-color);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+      ha-form {
+        display: block;
+        margin-bottom: 12px;
       }
     `;
   }

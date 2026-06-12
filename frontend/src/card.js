@@ -3,7 +3,7 @@
 import { LitElement, html } from "lit";
 import { CARD_TYPE } from "./const.js";
 import { accountEntities, entityMap, vehicleDevices } from "./entities.js";
-import { num, relTime } from "./format.js";
+import { isEntityId, isTemplate, num, relTime } from "./format.js";
 import { ensureHaComponents } from "./ha-components.js";
 import { cardStyles } from "./styles.js";
 import { renderLiveData } from "./views/live-data.js";
@@ -63,20 +63,89 @@ export class AbrpVehicleCard extends LitElement {
     return vehicles[0];
   }
 
-  _vs(key) {
-    const id = this._vmap?.[key];
+  /* Resolve a card slot: a per-slot override (entity id, Jinja template or
+   * literal value) wins over the auto-discovered entity. */
+  _resolve(key, map) {
+    const override = this._config.entities?.[key];
+    if (override) {
+      if (isTemplate(override)) {
+        const result = this._templateResults?.[override];
+        return {
+          state: result === undefined ? "unknown" : String(result),
+          attributes: {},
+        };
+      }
+      if (isEntityId(override)) return this.hass.states[override];
+      return { state: override, attributes: {} };
+    }
+    const id = map?.[key];
     return id ? this.hass.states[id] : undefined;
+  }
+
+  _vs(key) {
+    return this._resolve(key, this._vmap);
   }
 
   _as(key) {
-    const id = this._amap?.[key];
-    return id ? this.hass.states[id] : undefined;
+    return this._resolve(key, this._amap);
   }
 
-  /* Open the standard more-info dialog for a discovered entity. */
+  /* -- live template rendering for overrides -- */
+
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("hass") || changed.has("_config")) this._syncTemplates();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    for (const unsub of Object.values(this._tmplUnsub || {})) {
+      if (typeof unsub === "function") unsub();
+    }
+    this._tmplUnsub = {};
+  }
+
+  async _syncTemplates() {
+    if (!this.hass?.connection) return;
+    this._tmplUnsub = this._tmplUnsub || {};
+    this._templateResults = this._templateResults || {};
+    const templates = Object.values(this._config.entities || {}).filter(
+      (value) => isTemplate(value)
+    );
+    for (const template of templates) {
+      if (this._tmplUnsub[template]) continue;
+      this._tmplUnsub[template] = true; // claim before the async subscribe
+      try {
+        this._tmplUnsub[template] = await this.hass.connection.subscribeMessage(
+          (msg) => {
+            this._templateResults[template] = msg.result;
+            this.requestUpdate();
+          },
+          { type: "render_template", template }
+        );
+      } catch (e) {
+        this._templateResults[template] = "error";
+        this.requestUpdate();
+      }
+    }
+    for (const known of Object.keys(this._tmplUnsub)) {
+      if (!templates.includes(known)) {
+        const unsub = this._tmplUnsub[known];
+        if (typeof unsub === "function") unsub();
+        delete this._tmplUnsub[known];
+        delete this._templateResults[known];
+      }
+    }
+  }
+
+  /* Open the standard more-info dialog for a slot's entity. */
   _moreInfo(key) {
-    const entityId = this._vmap?.[key] || this._amap?.[key];
-    if (!entityId) return;
+    const override = this._config.entities?.[key];
+    const entityId =
+      override && isEntityId(override) && !isTemplate(override)
+        ? override
+        : this._vmap?.[key] || this._amap?.[key];
+    if (!entityId || (override && !isEntityId(override))) return;
     this.dispatchEvent(
       new CustomEvent("hass-more-info", {
         detail: { entityId },
@@ -132,6 +201,12 @@ export class AbrpVehicleCard extends LitElement {
     const socState = this._vs("sensor.soc");
     const soc = num(socState);
     const image = this._vs("image.car_image");
+    const imageSrc =
+      image?.attributes?.entity_picture ||
+      (typeof image?.state === "string" &&
+      (image.state.startsWith("http") || image.state.startsWith("/"))
+        ? image.state
+        : null);
     const lastSeen = relTime(this._vs("sensor.last_update")?.state);
     const charging = this._vs("binary_sensor.charging")?.state === "on";
     const power = Number(this._vs("sensor.charging_power")?.state);
@@ -148,10 +223,10 @@ export class AbrpVehicleCard extends LitElement {
           <div class="name">${name}</div>
           ${show("show_profile") ? this._renderProfile() : ""}
         </div>
-        ${show("show_image") && image?.attributes?.entity_picture
+        ${show("show_image") && imageSrc
           ? html`<img
               class="car clickable"
-              src="${image.attributes.entity_picture}"
+              src="${imageSrc}"
               alt="${name}"
               @click=${() => this._moreInfo("image.car_image")}
             />`
