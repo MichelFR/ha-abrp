@@ -453,6 +453,9 @@ class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
         return {
             "connected": snapshot.is_connected,
             "providers": snapshot.providers or {},
+            # Lets the card reproduce ABRP's connection-status indicator, which
+            # keys off how recently the SoC was actually measured.
+            "soc_last_seen": snapshot.soc_last_seen,
         }
 
 

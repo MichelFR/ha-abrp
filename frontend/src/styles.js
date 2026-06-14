@@ -187,6 +187,32 @@ export const cardStyles = css`
     margin-right: 7px;
     vertical-align: middle;
   }
+  /* Connection-status dot colours, matching the ABRP app. */
+  .dot.green {
+    background: #4caf50;
+    --dot-ripple: rgba(76, 175, 80, 0.5);
+  }
+  .dot.red {
+    background: #f44336;
+    --dot-ripple: rgba(244, 67, 54, 0.5);
+  }
+  .dot.gray {
+    background: #9e9e9e;
+  }
+  .dot.pulse {
+    animation: dot-pulse 1.6s ease-out infinite;
+  }
+  @keyframes dot-pulse {
+    0% {
+      box-shadow: 0 0 0 0 var(--dot-ripple);
+    }
+    70% {
+      box-shadow: 0 0 0 6px transparent;
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
   .link {
     color: var(--primary-color);
     cursor: pointer;

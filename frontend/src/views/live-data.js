@@ -77,10 +77,20 @@ export function renderLiveData(card) {
   ];
 
   const cloudName = cap(card._vs("sensor.data_source")?.state);
-  const sources = [
+  const ok = (ts) => ts && ts !== "unknown" && ts !== "unavailable";
+  // The cloud provider and the OBD dongle can be the same source (e.g. both
+  // "Obdble"); collapse same-named sources to a single dot, keeping the
+  // freshest timestamp so we never show one source twice.
+  const byName = new Map();
+  for (const [name, ts, key] of [
     [cloudName, card._vs("sensor.source_last_refresh")?.state, "sensor.source_last_refresh"],
     ["Obdble", card._vs("sensor.obd_last_refresh")?.state, "sensor.obd_last_refresh"],
-  ].filter(([n, ts]) => n && ts && ts !== "unknown" && ts !== "unavailable");
+  ]) {
+    if (!name || !ok(ts)) continue;
+    const prev = byName.get(name.toLowerCase());
+    if (!prev || new Date(ts) > new Date(prev[1])) byName.set(name.toLowerCase(), [name, ts, key]);
+  }
+  const sources = [...byName.values()];
 
   return html`<div class="grid">
       ${tiles.map(

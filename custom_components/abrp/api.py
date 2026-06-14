@@ -26,14 +26,6 @@ from .const import (
 )
 from .metadata import AbrpMetadata
 
-# Transient signals (speed, power, ...) carry the per-field timestamp from when
-# they were last measured. ABRP only treats them as "live" while they keep up
-# with the newest telemetry; once a vehicle parks/sleeps they go stale (the last
-# value lingers for hours). We blank a transient field if its own timestamp lags
-# the newest telemetry (tlm.utc) by more than this, mirroring the ABRP app which
-# hides stale speed rather than showing the last driving value.
-_TRANSIENT_STALE_SECONDS = 300
-
 
 class AbrpApiError(Exception):
     """Raised when the ABRP API returns an error or unexpected payload."""
@@ -106,6 +98,7 @@ class Snapshot:
     cloud_source: str | None = None  # the cloud provider's name (e.g. "enode")
     cloud_last_seen: datetime | None = None  # last telemetry via the cloud provider
     obd_last_seen: datetime | None = None  # last telemetry via the OBD dongle
+    soc_last_seen: datetime | None = None  # when the SoC reading was measured
     ref_consumption_wh_km: float | None = None
     max_speed_kmh: float | None = None
     weight_kg: float | None = None
@@ -114,11 +107,16 @@ class Snapshot:
 
 @dataclass
 class VehicleRefresh:
-    """Result of a ``get_tlm`` call: per-vehicle metadata + latest snapshot."""
+    """Result of a ``get_tlm`` call: per-vehicle metadata + raw payloads.
+
+    ``items`` are the raw per-vehicle payloads (vehicle-level status fields plus
+    the ``tlm`` telemetry block); the coordinator merges each ``tlm`` onto its
+    running per-vehicle telemetry and builds the snapshots from the result.
+    """
 
     fetched_at: datetime
     vehicles: list[Vehicle]
-    snapshots: list[Snapshot]
+    items: list[dict[str, Any]]
     # Bumps whenever account settings change (on any device); used to know
     # when to re-fetch settings.
     settings_version: int | None = None
@@ -152,14 +150,14 @@ class AbrpApi:
             raise AbrpApiError(f"get_tlm returned status {response.get('status')!r}")
 
         result = response.get("result") or []
-        vehicles = [_normalize_vehicle(item) for item in result]
-        snapshots = [_normalize_snapshot(item) for item in result]
+        items = [item for item in result if isinstance(item, dict)]
+        vehicles = [_normalize_vehicle(item) for item in items]
         extra = response.get("extra") or {}
         version = extra.get("settings_version")
         return VehicleRefresh(
             fetched_at=datetime.now(timezone.utc),
             vehicles=vehicles,
-            snapshots=snapshots,
+            items=items,
             settings_version=version if isinstance(version, int) else None,
         )
 
@@ -251,13 +249,6 @@ def _as_str(value: Any) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def _from_unix_seconds(value: Any) -> datetime:
-    seconds = _as_float(value)
-    if seconds is None:
-        return datetime.now(timezone.utc)
-    return datetime.fromtimestamp(seconds, tz=timezone.utc)
-
-
 def _optional_unix_seconds(value: Any) -> datetime | None:
     seconds = _as_float(value)
     if seconds is None or seconds <= 0:
@@ -281,51 +272,211 @@ def _normalize_vehicle(item: dict[str, Any]) -> Vehicle:
     )
 
 
-def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
-    tlm = _as_dict(item.get("tlm"))
+# --- telemetry merge (mirrors the ABRP web app) ---------------------------
+#
+# ABRP keeps one telemetry record per vehicle and reconciles every incoming
+# source (the periodic get_tlm poll and the realtime SSE stream) into it
+# *field by field*, keeping whichever source carries the newer per-field
+# timestamp. Each field also has its own staleness window: a value whose
+# measurement is older than its window is dropped (shown as unknown). This is
+# why e.g. SoC keeps updating from the poll while a charging burst floods the
+# stream with power readings — and why a finished charge clears instead of
+# sticking. We replicate that exactly here.
+
+_HOUR = 3600
+_DAY = 86400
+_WEEK = 604800
+_MONTH = 2592000
+
+# Per-field staleness windows in seconds. A field older than its window is
+# blanked. Fields absent here never go stale on their own.
+_FIELD_TTL: dict[str, int] = {
+    "soc": _WEEK,
+    "soe": _DAY,
+    "power": 300,
+    "hvac_power": 300,
+    "speed": 30,
+    "is_charging": _HOUR,
+    "is_dcfc": _DAY,
+    "is_parked": 300,
+    "capacity": _MONTH,
+    "kwh_charged": 300,
+    "soh": _MONTH,
+    "voltage": 300,
+    "current": 300,
+    "odometer": _WEEK,
+    "est_battery_range": _DAY,
+    "ext_temp": _HOUR,
+    "batt_temp": _HOUR,
+    "cabin_temp": _HOUR,
+}
+# Calibration values ABRP keeps "sticky": an update only replaces them if its
+# timestamp is strictly newer (never on a tie).
+_STICKY_FIELDS = frozenset(
+    {"calib_ref_cons", "calib_confidence", "calib_max_speed", "speed_factor"}
+)
+# tlm sub-keys that are bookkeeping, not telemetry values.
+_META_KEYS = frozenset({"timestamps", "providers", "utc"})
+
+
+def _num0(value: Any) -> float:
+    """A numeric value as float; anything non-numeric counts as 0."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    return 0.0
+
+
+def _blank_if_stale(
+    tlm: dict[str, Any],
+    timestamps: dict[str, float],
+    providers: dict[str, Any],
+    key: str,
+    field_ts: float,
+    now: float,
+) -> None:
+    """Drop a field whose measurement is older than its staleness window."""
+    if tlm.get(key) is None:
+        return
+    if key == "soh" and tlm.get(key) == 0:
+        tlm[key] = None
+        timestamps.pop(key, None)
+        providers.pop(key, None)
+        return
+    ttl = _FIELD_TTL.get(key)
+    # A quick DC session ages out after an hour; slow AC (or unknown) charging
+    # lingers for a day, matching ABRP.
+    if key == "is_charging" and not tlm.get("is_dcfc"):
+        ttl = _DAY
+    if ttl is not None and (now - field_ts) > ttl:
+        tlm[key] = None
+        timestamps.pop(key, None)
+        providers.pop(key, None)
+
+
+def merge_tlm(
+    store: dict[str, Any] | None, update: dict[str, Any], now: float
+) -> dict[str, Any]:
+    """Merge ``update`` onto ``store`` field-by-field by per-field timestamp.
+
+    ``store``/``update`` are tlm dicts carrying ``timestamps`` (field -> unix
+    seconds) and ``providers`` (field -> source) maps. For each field the value
+    with the newer timestamp wins; stale fields are dropped. Returns a fresh
+    merged tlm whose ``utc`` is the newest field timestamp seen.
+    """
+    store = store or {}
+    s_ts = _as_dict(store.get("timestamps"))
+    u_ts = _as_dict(update.get("timestamps"))
+    s_prov = _as_dict(store.get("providers"))
+    u_prov = _as_dict(update.get("providers"))
+    s_utc = _num0(store.get("utc"))
+    u_utc = _num0(update.get("utc"))
+
+    merged: dict[str, Any] = {}
+    timestamps: dict[str, float] = {}
+    providers: dict[str, Any] = {}
+    chosen_ts: dict[str, float] = {}
+    newest = max(s_utc, u_utc)
+
+    for key in (set(store) | set(update)) - _META_KEYS:
+        if key not in update:
+            value, ts, prov = store.get(key), _num0(s_ts.get(key)), s_prov.get(key)
+        else:
+            ts_store = _num0(s_ts.get(key, s_utc)) if key in store else 0.0
+            ts_update = _num0(u_ts.get(key, u_utc))
+            # ABRP prefers an OBD SoC over a coarser Android-Auto one when the
+            # two are within 30 s of each other.
+            soc_tiebreak = (
+                key == "soc"
+                and s_prov.get("soc") == "android_auto"
+                and u_prov.get("soc") == "obdble"
+                and ts_store - ts_update < 30
+            )
+            store_wins = (
+                key in store
+                and ts_store > ts_update
+                and key not in _STICKY_FIELDS
+                and not soc_tiebreak
+            )
+            if store_wins:
+                value, ts, prov = store.get(key), ts_store, s_prov.get(key)
+            else:
+                value, ts, prov = update.get(key), ts_update, u_prov.get(key)
+        merged[key] = value
+        chosen_ts[key] = ts
+        if ts > 0:
+            timestamps[key] = ts
+            newest = max(newest, ts)
+        if prov is not None:
+            providers[key] = prov
+
+    # Apply staleness once everything is in place (so is_charging can see the
+    # merged is_dcfc). Fields with no own timestamp fall back to the freshest
+    # so a just-polled value isn't wrongly aged out.
+    for key in list(merged):
+        _blank_if_stale(
+            merged, timestamps, providers, key, chosen_ts.get(key) or newest, now
+        )
+
+    merged["utc"] = newest or u_utc or s_utc
+    merged["timestamps"] = timestamps
+    merged["providers"] = providers
+    return merged
+
+
+def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot:
+    """Build a :class:`Snapshot` from a vehicle payload and its merged tlm."""
+    tlm = tlm or {}
     location = _as_dict(tlm.get("location"))
-    timestamps = _as_dict(tlm.get("timestamps"))
-    reference_ts = _as_float(tlm.get("utc"))
+    providers = _as_dict(tlm.get("providers"))
     # calib_confidence comes as a 0..1 fraction.
     confidence = _as_float(tlm.get("calib_confidence"))
-    # A non-positive speed factor marks an invalid calibration (the ABRP app
-    # drops it too).
+    # A non-positive speed factor marks an invalid calibration (ABRP drops it).
     speed_factor = _as_float(tlm.get("speed_factor"))
     if speed_factor is not None and speed_factor <= 0:
         speed_factor = None
 
-    def live(field: str, value: float | None) -> float | None:
-        """Blank a transient field if its timestamp lags the newest telemetry."""
-        if value is None or reference_ts is None:
-            return value
-        field_ts = _as_float(timestamps.get(field))
-        if field_ts is None:
-            return value
-        return value if (reference_ts - field_ts) <= _TRANSIENT_STALE_SECONDS else None
+    # ABRP's "last seen" is the newest of the cloud time, the local/OBD time
+    # and the merged telemetry time; the displayed data source is whichever of
+    # those is currently freshest.
+    ota_time = _num0(item.get("ota_tlm_time"))
+    tlm_time = _num0(item.get("tlm_time"))
+    last_seen = max(ota_time, tlm_time, _num0(tlm.get("utc")))
+    ota_type = _as_str(item.get("ota_tlm_type"))
+    tlm_type = _as_str(item.get("tlm_type"))
+    source = ota_type if (ota_time == last_seen and ota_type) else (tlm_type or ota_type)
+    recorded_at = (
+        datetime.fromtimestamp(last_seen, tz=timezone.utc)
+        if last_seen > 0
+        else datetime.now(timezone.utc)
+    )
+    soc_ts = _num0(_as_dict(tlm.get("timestamps")).get("soc"))
+    soc_last_seen = (
+        datetime.fromtimestamp(soc_ts, tz=timezone.utc) if soc_ts > 0 else None
+    )
 
     return Snapshot(
         vehicle_id=item["vehicle_id"],
         source="get_tlm",
-        recorded_at=_from_unix_seconds(tlm.get("utc")),
+        recorded_at=recorded_at,
         soc_percent=_as_float(tlm.get("soc")),
         is_charging=_as_bool(tlm.get("is_charging")),
         is_driving=_as_bool(tlm.get("is_driving")),
         is_dcfc=_as_bool(tlm.get("is_dcfc")),
         is_parked=_as_bool(tlm.get("is_parked")),
-        power_kw=live("power", _as_float(tlm.get("power"))),
-        voltage_v=live("voltage", _as_float(tlm.get("voltage"))),
-        current_a=live("current", _as_float(tlm.get("current"))),
+        power_kw=_as_float(tlm.get("power")),
+        voltage_v=_as_float(tlm.get("voltage")),
+        current_a=_as_float(tlm.get("current")),
         odometer_km=_as_float(tlm.get("odometer")),
         latitude=_as_float(tlm.get("lat")),
         longitude=_as_float(tlm.get("lon")),
-        heading_deg=live("heading", _as_float(tlm.get("heading"))),
+        heading_deg=_as_float(tlm.get("heading")),
         ext_temp_c=_as_float(tlm.get("ext_temp")),
         cabin_temp_c=_as_float(tlm.get("cabin_temp")),
         batt_temp_c=_as_float(tlm.get("batt_temp")),
         vehicle_temp_c=_as_float(tlm.get("vehicle_temp")),
-        # ABRP also hides GPS-derived speed; only show a non-GPS live value.
-        speed_kmh=live("speed", _as_float(tlm.get("speed")))
-        if _as_dict(tlm.get("providers")).get("speed") != "gps"
+        # ABRP hides GPS-derived speed; only surface a non-GPS reading.
+        speed_kmh=_as_float(tlm.get("speed"))
+        if providers.get("speed") != "gps"
         else None,
         estimated_range_km=_as_float(tlm.get("est_battery_range")),
         battery_capacity_kwh=_first_float(
@@ -341,23 +492,22 @@ def _normalize_snapshot(item: dict[str, Any]) -> Snapshot:
         plugged_in=_as_bool(tlm.get("is_charger_connected")),
         speed_factor=speed_factor,
         calib_confidence_percent=None if confidence is None else confidence * 100,
-        hvac_power_kw=live("hvac_power", _as_float(tlm.get("hvac_power"))),
+        hvac_power_kw=_as_float(tlm.get("hvac_power")),
         timezone=_as_str(location.get("timezone")),
         country3=_as_str(location.get("country_3")),
         charger_id=tlm.get("charger_id")
         if isinstance(tlm.get("charger_id"), int)
         else None,
-        tlm_source=_as_str(tlm.get("tlm_type")) or _as_str(item.get("ota_tlm_type")),
-        providers=tlm.get("providers")
-        if isinstance(tlm.get("providers"), dict)
-        else None,
+        tlm_source=source,
+        providers=providers or None,
         is_connected=_as_bool(item.get("is_connected")),
         is_asleep=_as_bool(item.get("is_asleep")),
         cloud_connected=_as_bool(item.get("ota_is_connected")),
         obd_connected=_as_bool(item.get("local_is_connected")),
-        cloud_source=_as_str(item.get("ota_tlm_type")),
+        cloud_source=ota_type,
         cloud_last_seen=_optional_unix_seconds(item.get("ota_tlm_time")),
         obd_last_seen=_optional_unix_seconds(item.get("tlm_time")),
+        soc_last_seen=soc_last_seen,
         ref_consumption_wh_km=_as_float(tlm.get("calib_ref_cons")),
         max_speed_kmh=_as_float(tlm.get("max_speed")),
         weight_kg=_as_float(tlm.get("weight")),

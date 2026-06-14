@@ -195,6 +195,43 @@ export class AbrpVehicleCard extends LitElement {
     </ha-card>`;
   }
 
+  /* The connection-status indicator (dot colour + text), reproducing the
+   * logic of the ABRP web app: green + pulse while telemetry is live (SoC seen
+   * within 5 min), otherwise a grey "last seen X ago" for up to 3 h, then
+   * sleeping/offline. Evaluated on every render so it ticks over in real time,
+   * exactly like the app. */
+  _status() {
+    const now = Date.now() / 1000;
+    const toUnix = (s) => {
+      if (!s || s === "unknown" || s === "unavailable") return null;
+      const ms = new Date(s).getTime();
+      return Number.isNaN(ms) ? null : ms / 1000;
+    };
+    const socTs = toUnix(this._vs("sensor.data_source")?.attributes?.soc_last_seen);
+    const soc = Number(this._vs("sensor.soc")?.state);
+    const recentSoc = Number.isFinite(soc) && socTs != null && now - socTs < 300;
+    const charging = this._vs("binary_sensor.charging")?.state === "on";
+    const power = Math.abs(Number(this._vs("sensor.charging_power")?.state));
+    const asleep = this._vs("binary_sensor.asleep")?.state === "on";
+    const lastSeenState = this._vs("sensor.last_update")?.state;
+    const lastSeenTs = toUnix(lastSeenState);
+
+    if (recentSoc && charging && Number.isFinite(power) && power > 0)
+      return { color: "green", pulse: true, text: this._t("card.charging") };
+    if (recentSoc)
+      return { color: "green", pulse: true, text: this._t("card.connected") };
+    if (lastSeenTs != null && now - lastSeenTs <= 3 * 3600) {
+      const rel = relTime(lastSeenState, this.hass);
+      return {
+        color: "gray",
+        pulse: false,
+        text: rel ? this._t("card.last_seen", { time: rel }) : this._t("card.never_seen"),
+      };
+    }
+    if (asleep) return { color: "gray", pulse: false, text: this._t("card.sleeping") };
+    return { color: "gray", pulse: false, text: this._t("card.offline") };
+  }
+
   _renderMain(vehicle) {
     const abrpName = this._vs("sensor.vehicle_name")?.state;
     const rawTitle = this._config.title;
@@ -219,7 +256,7 @@ export class AbrpVehicleCard extends LitElement {
       (image.state.startsWith("http") || image.state.startsWith("/"))
         ? image.state
         : null);
-    const lastSeen = relTime(this._vs("sensor.last_update")?.state, this.hass);
+    const status = this._status();
     const charging = this._vs("binary_sensor.charging")?.state === "on";
     const power = Number(this._vs("sensor.charging_power")?.state);
     const chargeSpeed =
@@ -278,10 +315,10 @@ export class AbrpVehicleCard extends LitElement {
                   class="seen clickable"
                   @click=${() => this._moreInfo("sensor.last_update")}
                 >
-                  <span class="dot"></span>
-                  ${lastSeen
-                    ? this._t("card.last_seen", { time: lastSeen })
-                    : this._t("card.never_seen")}
+                  <span
+                    class="dot ${status.color}${status.pulse ? " pulse" : ""}"
+                  ></span>
+                  ${status.text}
                 </span>`
               : html`<span></span>`}
             ${show("show_live_data")

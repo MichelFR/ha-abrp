@@ -1,8 +1,9 @@
 """Realtime telemetry stream for the ABRP Mate integration.
 
 Opens the ABRP server-sent-events endpoint (``/2/tlm``) for a vehicle and
-decodes the unit-tagged event payloads into :class:`Snapshot` updates that get
-merged onto the latest known snapshot.
+decodes the unit-tagged event payloads into partial telemetry (``tlm``) updates
+that the coordinator merges onto its running per-vehicle record — exactly the
+shape the periodic poll produces, so the two reconcile field-by-field.
 """
 
 from __future__ import annotations
@@ -12,13 +13,12 @@ import json
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 import aiohttp
 
-from .api import Snapshot
+from .api import _num0
 from .const import TLM_EVENTS_URL, stream_headers
 from .metadata import AbrpMetadata
 
@@ -37,9 +37,10 @@ _HEALTHY_CONNECTION_SECONDS = 60
 # the connection cheaply.
 _IDLE_TIMEOUT_SECONDS = 600
 
-SnapshotCallback = Callable[[Snapshot], Awaitable[None] | None]
+Tlm = dict[str, Any]
+TlmCallback = Callable[[int, Tlm], Awaitable[None] | None]
 TokenProvider = Callable[[], Awaitable[str]]
-BaseProvider = Callable[[], Snapshot | None]
+BaseProvider = Callable[[], Tlm | None]
 StateCallback = Callable[[bool], None]
 
 
@@ -52,8 +53,7 @@ class AbrpLiveStream:
         metadata: AbrpMetadata,
         token_provider: TokenProvider,
         vehicle_id: int,
-        on_snapshot: SnapshotCallback,
-        seed: Snapshot | None = None,
+        on_tlm: TlmCallback,
         base_provider: BaseProvider | None = None,
         on_state: StateCallback | None = None,
     ) -> None:
@@ -61,10 +61,9 @@ class AbrpLiveStream:
         self._metadata = metadata
         self._token_provider = token_provider
         self._vehicle_id = vehicle_id
-        self._on_snapshot = on_snapshot
-        self._current = seed
-        # Latest merged snapshot to use as the merge base for partial events
-        # (typically the coordinator's view, which includes poll updates).
+        self._on_tlm = on_tlm
+        # The vehicle's current merged tlm, used as the base for the few fields
+        # an event doesn't carry (e.g. the is_charging timestamp).
         self._base_provider = base_provider
         self._on_state = on_state
         self._connected = False
@@ -167,47 +166,25 @@ class AbrpLiveStream:
                 buffer += chunk.decode("utf-8", errors="replace")
                 payloads, buffer = _extract_payloads(buffer)
                 for payload in payloads:
-                    snapshot = self._apply_payload(payload)
-                    if snapshot is not None:
-                        result = self._on_snapshot(snapshot)
+                    update = self._apply_payload(payload)
+                    if update is not None:
+                        result = self._on_tlm(self._vehicle_id, update)
                         if asyncio.iscoroutine(result):
                             await result
 
-    def _apply_payload(self, payload: str) -> Snapshot | None:
+    def _apply_payload(self, payload: str) -> Tlm | None:
         try:
             event = json.loads(payload)
         except json.JSONDecodeError:
             return None
         if not isinstance(event, dict):
             return None
-
-        # Merge onto the freshest full snapshot available: the coordinator's
-        # (which carries poll-only fields like connection status) over our own
-        # last merge result.
-        latest = self._base_provider() if self._base_provider else None
-        base = latest or self._current
-
-        vehicle_id = event.get("vehicleId")
-        if not isinstance(vehicle_id, int):
-            vehicle_id = base.vehicle_id if base else None
-        if not isinstance(vehicle_id, int):
+        current = self._base_provider() if self._base_provider else None
+        update = _event_to_tlm(event, current)
+        # Nothing recognized in this event -> nothing to merge.
+        if not update.get("timestamps"):
             return None
-
-        base = base or Snapshot(
-            vehicle_id=vehicle_id,
-            source="tlm_event",
-            recorded_at=datetime.now(timezone.utc),
-        )
-        snapshot = replace(
-            base,
-            vehicle_id=vehicle_id,
-            source="tlm_event",
-            recorded_at=_event_timestamp(event),
-            raw=event,
-        )
-        _update_from_event(snapshot, event)
-        self._current = snapshot
-        return snapshot
+        return update
 
 
 def _extract_payloads(buffer: str) -> tuple[list[str], str]:
@@ -238,162 +215,157 @@ def _parse_sse_block(block: str) -> str | None:
     return "\n".join(data_lines) if data_lines else None
 
 
-def _event_timestamp(event: dict[str, Any]) -> datetime:
-    """Pick the latest ``time`` field across the event's sub-objects."""
-    times = sorted(
-        value["time"]
-        for value in event.values()
-        if isinstance(value, dict) and isinstance(value.get("time"), str)
-    )
-    if times:
-        try:
-            return datetime.fromisoformat(times[-1].replace("Z", "+00:00"))
-        except ValueError:
-            pass
-    return datetime.now(timezone.utc)
-
-
-def _scale(record: dict[str, Any], key: str, divisor: float) -> float | None:
-    value = record.get(key)
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return value / divisor
-    return None
-
-
-def _num(record: dict[str, Any], key: str) -> float | None:
-    value = record.get(key)
+def _sub_value(sub: dict[str, Any], key: str) -> float | None:
+    value = sub.get(key)
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return float(value)
     return None
 
 
-def _rec(event: dict[str, Any], key: str) -> dict[str, Any]:
-    value = event.get(key)
-    return value if isinstance(value, dict) else {}
-
-
-def _choose(current: Any, nxt: Any) -> Any:
-    return nxt if nxt is not None else current
-
-
-# Transient signals are only meaningful while fresh; a parked/asleep vehicle's
-# event still carries the last driving value with an old per-field timestamp.
-_TRANSIENT_STALE_SECONDS = 300
-
-
-def _field_time(record: dict[str, Any]) -> datetime | None:
-    value = record.get("time")
+def _time_unix(value: Any) -> float:
+    """An ISO-8601 ``time`` string as unix seconds, 0 if unparseable."""
     if not isinstance(value, str):
-        return None
+        return 0.0
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
     except ValueError:
-        return None
+        return 0.0
 
 
-def _apply_transient(
-    snapshot: Snapshot,
-    attr: str,
-    record: dict[str, Any],
-    value: float | None,
-    now: datetime,
-) -> None:
-    """Apply a transient field only if its event timestamp is fresh.
+# ABRP's realtime "internal provider" codes mapped to the source names that the
+# poll's ``providers`` map already uses (so streamed and polled fields agree on
+# their source). From ProviderToInternalProviderMap in the ABRP web bundle.
+_PROVIDER_MAP = {
+    "RIVIAN_PLAN": "rivian",
+    "RIVIAN_STREAM": "rivian",
+    "RIVIAN_POLL": "rivian",
+    "TESLA_FLEET_STREAM": "tesla",
+    "TESLA_FLEET_POLL": "tesla",
+    "APP_AUTO": "android_auto",
+    "APP_AUTOMOTIVE": "automotive",
+    "APP_LOCATION": "gps",
+    "APP_OBD": "obdble",
+    "HIGHMOBILITY_MQTT": "highmobility",
+    "ENODE_PUSH": "enode",
+    "TLM_API": "api",
+    "TRONITY_POLL": "tronity",
+    "DERIVED": "derived",
+}
 
-    present & fresh -> value; present & stale -> None; absent -> left unchanged.
+# event sub-object -> (tlm field, converter from the sub-object to a value in
+# the same units the poll's tlm uses). Mirrors the decode in the ABRP bundle.
+_EVENT_FIELDS: dict[str, tuple[str, Callable[[dict[str, Any]], float | None]]] = {
+    "batteryCapacity": ("capacity", lambda s: _div(_sub_value(s, "wh"), 1000)),
+    "batteryTemperature": ("batt_temp", lambda s: _sub_value(s, "c")),
+    "cabinSetPoint": ("cabin_set_point", lambda s: _sub_value(s, "c")),
+    "cabinTemperature": ("cabin_temp", lambda s: _sub_value(s, "c")),
+    "calibratedConfidence": ("calib_confidence", lambda s: _sub_value(s, "frac")),
+    "calibratedRefCons": ("calib_ref_cons", lambda s: _pos(_sub_value(s, "wh_per_km"))),
+    "chargingEnergyAdded": ("kwh_charged", lambda s: _div(_sub_value(s, "wh"), 1000)),
+    "current": ("current", lambda s: _sub_value(s, "a")),
+    "elevation": ("elevation", lambda s: _sub_value(s, "m")),
+    "estimatedBatteryRange": ("est_battery_range", lambda s: _div(_sub_value(s, "m"), 1000)),
+    "externalTemperature": ("ext_temp", lambda s: _sub_value(s, "c")),
+    "heading": ("heading", lambda s: _sub_value(s, "degrees")),
+    "hvacPower": ("hvac_power", lambda s: _div(_sub_value(s, "w"), 1000)),
+    "odometer": ("odometer", lambda s: _div(_sub_value(s, "m"), 1000)),
+    "power": ("power", lambda s: _div(_sub_value(s, "w"), 1000)),
+    "soc": ("soc", lambda s: _mul(_sub_value(s, "frac"), 100)),
+    "soe": ("soe", lambda s: _div(_sub_value(s, "wh"), 1000)),
+    "soh": ("soh", lambda s: _mul(_sub_value(s, "frac"), 100)),
+    "speed": ("speed", lambda s: _mul(_sub_value(s, "ms"), 3.6)),
+    "speedFactor": ("speed_factor", lambda s: _pos(_sub_value(s, "frac"))),
+    "voltage": ("voltage", lambda s: _sub_value(s, "v")),
+}
+
+
+def _div(value: float | None, divisor: float) -> float | None:
+    return value / divisor if value is not None else None
+
+
+def _mul(value: float | None, factor: float) -> float | None:
+    return value * factor if value is not None else None
+
+
+def _pos(value: float | None) -> float | None:
+    """Keep a value only if strictly positive (an invalid calibration is 0)."""
+    return value if value is not None and value > 0 else None
+
+
+def _event_to_tlm(event: dict[str, Any], current: Tlm | None) -> Tlm:
+    """Decode an SSE event into a partial tlm update the coordinator can merge.
+
+    The result carries only the fields the event actually touched, each with
+    its own measurement timestamp (and source provider) so the coordinator's
+    per-field merge can reconcile it with the poll.
     """
-    if not record:
-        return
-    field_time = _field_time(record)
-    fresh = (
-        field_time is not None
-        and (now - field_time).total_seconds() <= _TRANSIENT_STALE_SECONDS
-    )
-    setattr(snapshot, attr, value if fresh else None)
+    cur_ts = (current or {}).get("timestamps") if current else None
+    cur_ts = cur_ts if isinstance(cur_ts, dict) else {}
 
+    values: dict[str, Any] = {}
+    timestamps: dict[str, float] = {}
+    providers: dict[str, Any] = {}
+    utc = 0.0
 
-def _update_from_event(snapshot: Snapshot, event: dict[str, Any]) -> None:
-    """Merge a decoded SSE event onto the snapshot."""
-    now = datetime.now(timezone.utc)
-    snapshot.battery_capacity_kwh = _choose(
-        snapshot.battery_capacity_kwh,
-        _scale(_rec(event, "batteryCapacity"), "wh", 1000),
-    )
-    snapshot.batt_temp_c = _choose(
-        snapshot.batt_temp_c, _num(_rec(event, "batteryTemperature"), "c")
-    )
-    snapshot.cabin_set_point_c = _choose(
-        snapshot.cabin_set_point_c, _num(_rec(event, "cabinSetPoint"), "c")
-    )
-    snapshot.cabin_temp_c = _choose(
-        snapshot.cabin_temp_c, _num(_rec(event, "cabinTemperature"), "c")
-    )
-    # calibratedConfidence.frac is a 0..1 fraction; /0.01 -> percentage.
-    snapshot.calib_confidence_percent = _choose(
-        snapshot.calib_confidence_percent,
-        _scale(_rec(event, "calibratedConfidence"), "frac", 0.01),
-    )
-    snapshot.ref_consumption_wh_km = _choose(
-        snapshot.ref_consumption_wh_km, _num(_rec(event, "calibratedRefCons"), "wh")
-    )
-    snapshot.charging_energy_added_kwh = _choose(
-        snapshot.charging_energy_added_kwh,
-        _scale(_rec(event, "chargingEnergyAdded"), "wh", 1000),
-    )
-    current = _rec(event, "current")
-    _apply_transient(snapshot, "current_a", current, _num(current, "a"), now)
-    snapshot.elevation_m = _choose(
-        snapshot.elevation_m, _num(_rec(event, "elevation"), "m")
-    )
-    snapshot.estimated_range_km = _choose(
-        snapshot.estimated_range_km,
-        _scale(_rec(event, "estimatedBatteryRange"), "m", 1000),
-    )
-    snapshot.ext_temp_c = _choose(
-        snapshot.ext_temp_c, _num(_rec(event, "externalTemperature"), "c")
-    )
-    heading = _rec(event, "heading")
-    _apply_transient(snapshot, "heading_deg", heading, _num(heading, "degrees"), now)
-    snapshot.hvac_power_kw = _choose(
-        snapshot.hvac_power_kw, _scale(_rec(event, "hvacPower"), "w", 1000)
-    )
-    location = _rec(event, "location")
-    snapshot.latitude = _choose(snapshot.latitude, _num(location, "lat"))
-    snapshot.longitude = _choose(snapshot.longitude, _num(location, "long"))
-    snapshot.odometer_km = _choose(
-        snapshot.odometer_km, _scale(_rec(event, "odometer"), "m", 1000)
-    )
-    power = _rec(event, "power")
-    _apply_transient(snapshot, "power_kw", power, _scale(power, "w", 1000), now)
-    # soc.frac is a 0..1 fraction; /0.01 converts it to a percentage.
-    snapshot.soc_percent = _choose(
-        snapshot.soc_percent, _scale(_rec(event, "soc"), "frac", 0.01)
-    )
-    snapshot.soe_kwh = _choose(
-        snapshot.soe_kwh, _scale(_rec(event, "soe"), "wh", 1000)
-    )
-    snapshot.soh_percent = _choose(
-        snapshot.soh_percent, _scale(_rec(event, "soh"), "frac", 0.01)
-    )
-    # speed.ms is metres/second; /(1/3.6) converts to km/h.
-    speed = _rec(event, "speed")
-    _apply_transient(snapshot, "speed_kmh", speed, _scale(speed, "ms", 1 / 3.6), now)
-    # A non-positive speed factor marks an invalid calibration.
-    speed_factor = _num(_rec(event, "speedFactor"), "frac")
-    snapshot.speed_factor = _choose(
-        snapshot.speed_factor,
-        speed_factor if speed_factor is not None and speed_factor > 0 else None,
-    )
-    voltage = _rec(event, "voltage")
-    _apply_transient(snapshot, "voltage_v", voltage, _num(voltage, "v"), now)
+    for ekey, sub in event.items():
+        if not isinstance(sub, dict):
+            continue
+        ts = _time_unix(sub.get("time"))
+        utc = max(utc, ts)
+        provider_key = sub.get("provider")
+        provider = (
+            _PROVIDER_MAP.get(provider_key) if isinstance(provider_key, str) else None
+        )
 
-    charging_state = _rec(event, "chargingState").get("state")
-    if isinstance(charging_state, str):
-        snapshot.charging_state = charging_state
-        snapshot.is_charging = charging_state != "NOT_CHARGING"
+        if ekey == "location":
+            for field, src in (("lat", "lat"), ("lon", "long")):
+                value = _sub_value(sub, src)
+                if value is not None:
+                    values[field] = value
+                    timestamps[field] = ts
+                    if provider is not None:
+                        providers[field] = provider
+            continue
 
-    driving_state = _rec(event, "drivingState").get("state")
-    if isinstance(driving_state, str):
-        snapshot.driving_state = driving_state
-        snapshot.is_driving = driving_state in ("DRIVE", "DRIVING")
-        snapshot.is_parked = driving_state in ("PARK", "PARKED")
+        if ekey == "chargingState":
+            state = sub.get("state")
+            if isinstance(state, str):
+                charging = state in ("CHARGING_AC", "CHARGING_DC", "CHARGING_UNKNOWN")
+                dcfc = state == "CHARGING_DC"
+                values["is_charging"] = charging
+                values["is_dcfc"] = dcfc
+                # ABRP only advances these timestamps while actually charging,
+                # so a finished charge ages out from when it last charged.
+                timestamps["is_charging"] = ts if charging else _num0(cur_ts.get("is_charging"))
+                timestamps["is_dcfc"] = ts if dcfc else _num0(cur_ts.get("is_dcfc"))
+                if provider is not None:
+                    if charging:
+                        providers["is_charging"] = provider
+                    if dcfc:
+                        providers["is_dcfc"] = provider
+            continue
+
+        if ekey == "drivingState":
+            state = sub.get("state")
+            if isinstance(state, str):
+                values["is_driving"] = state == "DRIVE"
+                timestamps["is_driving"] = ts
+                if provider is not None:
+                    providers["is_driving"] = provider
+            continue
+
+        mapping = _EVENT_FIELDS.get(ekey)
+        if mapping is None:
+            continue
+        field, convert = mapping
+        value = convert(sub)
+        if value is not None:
+            values[field] = value
+            timestamps[field] = ts
+            if provider is not None:
+                providers[field] = provider
+
+    values["timestamps"] = timestamps
+    values["providers"] = providers
+    values["utc"] = utc
+    return values

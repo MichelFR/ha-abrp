@@ -6,7 +6,10 @@
     "never_seen": "Never seen",
     "live_data": "Live data",
     "options": "Options",
-    "charging": "Charging"
+    "charging": "Charging",
+    "connected": "Connected",
+    "sleeping": "Sleeping",
+    "offline": "Offline"
   },
   "time": {
     "just_now": "just now",
