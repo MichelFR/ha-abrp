@@ -207,13 +207,17 @@ export class AbrpVehicleCard extends LitElement {
       const ms = new Date(s).getTime();
       return Number.isNaN(ms) ? null : ms / 1000;
     };
-    const socTs = toUnix(this._vs("sensor.data_source")?.attributes?.soc_last_seen);
+    const ds = this._vs("sensor.data_source");
+    const socTs = toUnix(ds?.attributes?.soc_last_seen);
     const soc = Number(this._vs("sensor.soc")?.state);
     const recentSoc = Number.isFinite(soc) && socTs != null && now - socTs < 300;
     const charging = this._vs("binary_sensor.charging")?.state === "on";
     const power = Math.abs(Number(this._vs("sensor.charging_power")?.state));
     const asleep = this._vs("binary_sensor.asleep")?.state === "on";
-    const lastSeenState = this._vs("sensor.last_update")?.state;
+    // Prefer the data_source attribute (always available) over the last-update
+    // sensor, which the user may have disabled.
+    const lastSeenState =
+      ds?.attributes?.last_seen ?? this._vs("sensor.last_update")?.state;
     const lastSeenTs = toUnix(lastSeenState);
 
     if (recentSoc && charging && Number.isFinite(power) && power > 0)

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.1
+
+### Fixed
+
+- **Status stuck on "Offline" when the "Last update" sensor is disabled.** The
+  card derived its status from that sensor, so disabling it (a common cleanup)
+  made the status read Offline even when telemetry was minutes old. The card
+  now reads last-seen and SoC-seen times from the always-available data-source
+  sensor, so the status (and "Last seen X ago") works regardless of which
+  diagnostic entities are enabled.
+
 ## 1.2.0
 
 This release reworks how telemetry from the periodic poll and the realtime

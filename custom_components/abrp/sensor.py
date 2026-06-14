@@ -453,8 +453,11 @@ class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
         return {
             "connected": snapshot.is_connected,
             "providers": snapshot.providers or {},
-            # Lets the card reproduce ABRP's connection-status indicator, which
-            # keys off how recently the SoC was actually measured.
+            # Let the card reproduce ABRP's connection-status indicator without
+            # depending on the (user-disableable) last-update/refresh sensors:
+            # last_seen is the freshest telemetry time, soc_last_seen is when the
+            # SoC itself was measured.
+            "last_seen": snapshot.recorded_at,
             "soc_last_seen": snapshot.soc_last_seen,
         }
 
