@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.2
+
+### Added
+
+- **MIT license.** The repository now ships a LICENSE file, as required for
+  inclusion in the HACS default catalog.
+
 ## 1.2.1
 
 ### Fixed
