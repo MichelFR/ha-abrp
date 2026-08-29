@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.3.0
+
+### Added
+
+- **Navigation package.** A "Navigating" binary sensor (on while an ABRP plan
+  is active), an "Arrival time" timestamp sensor (the active plan's ETA), and
+  a navigation row on the custom card showing the destination, planned
+  distance, and ETA while navigating (toggleable in the card editor).
+- **Road and Speed limit sensors.** The current street name and its speed
+  limit (from ABRP's live mapInfo while navigating), promoted from tracker
+  attributes to real sensors so they are historizable and dashboard-friendly.
+  On a road without a limit the speed-limit sensor is unknown with an
+  `unlimited: true` attribute.
+- **Configurable polling.** The three adaptive `get_tlm` poll cadences
+  (active, active-with-stream, idle) can now be tuned under the integration's
+  Configure dialog. Routine token rotation no longer counts as a config
+  change, so changing options reloads the integration exactly once.
+
+### Changed
+
+- README documents all entities added since 1.2.2.
+
 ## 1.2.8
 
 ### Changed

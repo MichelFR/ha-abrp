@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -366,6 +366,13 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.weight_kg,
     ),
+    # The current road, from ABRP's mapInfo (live while navigating).
+    AbrpSensorDescription(
+        key="road",
+        translation_key="road",
+        icon="mdi:road-variant",
+        value_fn=lambda s: s.location_name,
+    ),
     AbrpSensorDescription(
         key="source_last_refresh",
         translation_key="source_last_refresh",
@@ -404,6 +411,8 @@ async def async_setup_entry(
         entities.append(AbrpMateLastUpdateSensor(coordinator, vehicle_id))
         entities.append(AbrpMateDataSourceSensor(coordinator, vehicle_id))
         entities.append(AbrpMateVehicleNameSensor(coordinator, vehicle_id))
+        entities.append(AbrpMateSpeedLimitSensor(coordinator, vehicle_id))
+        entities.append(AbrpMateArrivalTimeSensor(coordinator, vehicle_id))
     async_add_entities(entities)
 
 
@@ -490,6 +499,65 @@ class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
             "last_seen": snapshot.recorded_at,
             "soc_last_seen": snapshot.soc_last_seen,
         }
+
+
+class AbrpMateSpeedLimitSensor(AbrpMateEntity, SensorEntity):
+    """The current road's speed limit, from ABRP's mapInfo while navigating.
+
+    Unknown in a zone without a limit (German Autobahn); the ``unlimited``
+    attribute is True there so automations can tell it apart from no data.
+    """
+
+    _attr_translation_key = "speed_limit"
+    _attr_device_class = SensorDeviceClass.SPEED
+    _attr_native_unit_of_measurement = UnitOfSpeed.KILOMETERS_PER_HOUR
+    _attr_icon = "mdi:speedometer"
+
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
+        super().__init__(coordinator, vehicle_id)
+        self._attr_unique_id = f"{vehicle_id}_speed_limit"
+
+    @property
+    def native_value(self) -> float | None:
+        snapshot = self.snapshot
+        limit = snapshot.speed_limit if snapshot else None
+        return float(limit) if isinstance(limit, (int, float)) else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        snapshot = self.snapshot
+        if snapshot is None:
+            return None
+        return {"unlimited": snapshot.speed_limit == "no_limit"}
+
+
+class AbrpMateArrivalTimeSensor(AbrpMateEntity, SensorEntity):
+    """Estimated arrival time of the active ABRP navigation plan."""
+
+    _attr_translation_key = "arrival_time"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:flag-checkered"
+
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
+        super().__init__(coordinator, vehicle_id)
+        self._attr_unique_id = f"{vehicle_id}_arrival_time"
+
+    @property
+    def available(self) -> bool:
+        # Driven by account settings, not the vehicle snapshot.
+        return self.coordinator.last_update_success
+
+    @property
+    def native_value(self) -> datetime | None:
+        if self.coordinator.active_plan(self._vehicle_id) is None:
+            return None
+        value = self.coordinator.settings.get("last_plan_arrival_time")
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return None
+        seconds = value / 1000 if value > 1e12 else value
+        if seconds <= 0:
+            return None
+        return datetime.fromtimestamp(seconds, tz=timezone.utc)
 
 
 class AbrpMateVehicleNameSensor(AbrpMateEntity, SensorEntity):

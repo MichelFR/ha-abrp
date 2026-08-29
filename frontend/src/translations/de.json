@@ -9,7 +9,9 @@
     "charging": "Lädt",
     "connected": "Verbunden",
     "sleeping": "Schläft",
-    "offline": "Offline"
+    "offline": "Offline",
+    "eta": "Ankunft {time}",
+    "destination": "Ziel"
   },
   "time": {
     "just_now": "gerade eben",
@@ -99,7 +101,8 @@
     "show_last_seen": "Zuletzt gesehen anzeigen",
     "show_live_data": "Live-Daten-Link anzeigen",
     "show_options": "Optionen-Schaltfläche anzeigen",
-    "show_live_data_button": "Live-Daten-Schaltfläche anzeigen"
+    "show_live_data_button": "Live-Daten-Schaltfläche anzeigen",
+    "show_navigation": "Aktive Navigation anzeigen"
   },
   "short": {
     "show_image": "Fahrzeugbild",
@@ -109,7 +112,8 @@
     "show_last_seen": "Zuletzt gesehen",
     "show_live_data": "Live-Daten-Link",
     "show_options": "Optionen",
-    "show_live_data_button": "Live-Daten-Schaltfläche"
+    "show_live_data_button": "Live-Daten-Schaltfläche",
+    "show_navigation": "Navigation"
   },
   "slot": {
     "image": {

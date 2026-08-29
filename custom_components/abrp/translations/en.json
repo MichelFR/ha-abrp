@@ -60,6 +60,12 @@
       "gps_speed": {
         "name": "GPS speed"
       },
+      "road": {
+        "name": "Road"
+      },
+      "speed_limit": {
+        "name": "Speed limit"
+      },
       "heading": {
         "name": "Heading"
       },
@@ -129,6 +135,9 @@
       "data_source": {
         "name": "Data source"
       },
+      "arrival_time": {
+        "name": "Arrival time"
+      },
       "source_last_refresh": {
         "name": "{source} last refresh"
       },
@@ -166,6 +175,9 @@
       },
       "realtime_connected": {
         "name": "Realtime connected"
+      },
+      "navigating": {
+        "name": "Navigating"
       }
     },
     "device_tracker": {
@@ -226,6 +238,18 @@
     "image": {
       "car_image": {
         "name": "Car image"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling intervals",
+        "data": {
+          "poll_interval_active": "Active poll interval (seconds, realtime stream down)",
+          "poll_interval_streaming": "Active poll interval (seconds, realtime stream connected)",
+          "poll_interval_idle": "Idle poll interval (seconds)"
+        }
       }
     }
   }

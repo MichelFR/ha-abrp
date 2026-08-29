@@ -319,6 +319,7 @@ export class AbrpVehicleCard extends LitElement {
       <div class="bar clickable" @click=${() => this._moreInfo("sensor.soc")}>
         <div class="fill ${charging ? "charging" : ""}" style="width:${soc ?? 0}%"></div>
       </div>
+      ${show("show_navigation") ? this._renderNavigation() : ""}
       ${show("show_last_seen") || show("show_live_data")
         ? html`<div class="meta">
             ${show("show_last_seen")
@@ -360,6 +361,38 @@ export class AbrpVehicleCard extends LitElement {
               : ""}
           </div>`
         : ""}
+    </div>`;
+  }
+
+  /* Active navigation: destination, distance, and ETA (only while a plan
+   * is active — the Destination tracker has attributes then). */
+  _renderNavigation() {
+    const dest = this._vs("device_tracker.destination");
+    const attrs = dest?.attributes || {};
+    if (!attrs.destination && attrs.latitude == null) return "";
+    const parts = [];
+    if (attrs.distance_km != null) parts.push(`${attrs.distance_km} km`);
+    const eta = this._vs("sensor.arrival_time")?.state;
+    if (eta && eta !== "unknown" && eta !== "unavailable") {
+      const time = new Date(eta);
+      if (!Number.isNaN(time.getTime())) {
+        parts.push(
+          this._t("card.eta", {
+            time: time.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          })
+        );
+      }
+    }
+    return html`<div
+      class="nav-row clickable"
+      @click=${() => this._moreInfo("device_tracker.destination")}
+    >
+      <ha-icon icon="mdi:navigation-variant"></ha-icon>
+      <span class="nav-dest">${attrs.destination || this._t("card.destination")}</span>
+      ${parts.length ? html`<span class="nav-meta">${parts.join(" · ")}</span>` : ""}
     </div>`;
   }
 

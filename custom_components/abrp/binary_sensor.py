@@ -145,6 +145,7 @@ async def async_setup_entry(
             if not description.source_named or has_cloud
         )
         entities.append(AbrpMateRealtimeConnectedSensor(coordinator, vehicle_id))
+        entities.append(AbrpMateNavigatingSensor(coordinator, vehicle_id))
     async_add_entities(entities)
 
 
@@ -173,6 +174,31 @@ class AbrpMateBinarySensor(AbrpMateEntity, BinarySensorEntity):
         if snapshot is None:
             return None
         return self.entity_description.value_fn(snapshot)
+
+
+class AbrpMateNavigatingSensor(AbrpMateEntity, BinarySensorEntity):
+    """Whether an ABRP navigation plan is active for this vehicle."""
+
+    _attr_translation_key = "navigating"
+    _attr_icon = "mdi:navigation-variant"
+
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
+        super().__init__(coordinator, vehicle_id)
+        self._attr_unique_id = f"{vehicle_id}_navigating"
+
+    @property
+    def available(self) -> bool:
+        # Driven by account settings, not the vehicle snapshot.
+        return self.coordinator.last_update_success
+
+    @property
+    def is_on(self) -> bool:
+        settings = self.coordinator.settings
+        uuid = settings.get("plan_uuid")
+        if not isinstance(uuid, str) or not uuid:
+            return False
+        selected = settings.get("selected_vehicle_id")
+        return not isinstance(selected, int) or selected == self._vehicle_id
 
 
 class AbrpMateRealtimeConnectedSensor(AbrpMateEntity, BinarySensorEntity):

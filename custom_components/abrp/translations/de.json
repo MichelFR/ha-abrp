@@ -19,12 +19,24 @@
   },
   "entity": {
     "sensor": {
-      "soc": { "name": "Ladestand" },
-      "soe": { "name": "Energiestand" },
-      "soh": { "name": "Batteriezustand" },
-      "power": { "name": "Leistung" },
-      "charging_power": { "name": "Ladeleistung" },
-      "hvac_power": { "name": "Klimatisierungsleistung" },
+      "soc": {
+        "name": "Ladestand"
+      },
+      "soe": {
+        "name": "Energiestand"
+      },
+      "soh": {
+        "name": "Batteriezustand"
+      },
+      "power": {
+        "name": "Leistung"
+      },
+      "charging_power": {
+        "name": "Ladeleistung"
+      },
+      "hvac_power": {
+        "name": "Klimatisierungsleistung"
+      },
       "charging_state": {
         "name": "Ladestatus",
         "state": {
@@ -42,66 +54,178 @@
           "idle": "Inaktiv"
         }
       },
-      "speed": { "name": "Geschwindigkeit" },
-      "gps_speed": { "name": "GPS-Geschwindigkeit" },
-      "heading": { "name": "Fahrtrichtung" },
-      "odometer": { "name": "Kilometerstand" },
-      "range": { "name": "Geschätzte Reichweite" },
-      "elevation": { "name": "Höhe" },
-      "voltage": { "name": "Spannung" },
-      "current": { "name": "Stromstärke" },
-      "charge_energy_added": { "name": "Geladene Energie" },
-      "external_temp": { "name": "Außentemperatur" },
-      "battery_temp": { "name": "Batterietemperatur" },
-      "cabin_temp": { "name": "Innenraumtemperatur" },
-      "cabin_set_point": { "name": "Innenraum-Solltemperatur" },
-      "vehicle_temp": { "name": "Fahrzeugtemperatur" },
-      "battery_capacity": { "name": "Batteriekapazität" },
-      "reference_consumption": { "name": "Referenzverbrauch" },
-      "calibration_confidence": { "name": "Kalibrierungsvertrauen" },
-      "speed_factor": { "name": "Geschwindigkeitsfaktor" },
-      "charger_id": { "name": "Ladesäulen-ID" },
-      "max_speed": { "name": "Höchstgeschwindigkeit" },
-      "calibrated_max_speed": { "name": "Kalibrierte Maximalgeschwindigkeit" },
-      "firmware_version": { "name": "Firmware-Version" },
-      "weight": { "name": "Gewicht" },
-      "last_update": { "name": "Letzte Aktualisierung" },
-      "data_source": { "name": "Datenquelle" },
-      "source_last_refresh": { "name": "{source} letzte Aktualisierung" },
-      "obd_last_refresh": { "name": "OBD letzte Aktualisierung" },
-      "vehicle_name": { "name": "Fahrzeugname" }
+      "speed": {
+        "name": "Geschwindigkeit"
+      },
+      "gps_speed": {
+        "name": "GPS-Geschwindigkeit"
+      },
+      "road": {
+        "name": "Straße"
+      },
+      "speed_limit": {
+        "name": "Tempolimit"
+      },
+      "heading": {
+        "name": "Fahrtrichtung"
+      },
+      "odometer": {
+        "name": "Kilometerstand"
+      },
+      "range": {
+        "name": "Geschätzte Reichweite"
+      },
+      "elevation": {
+        "name": "Höhe"
+      },
+      "voltage": {
+        "name": "Spannung"
+      },
+      "current": {
+        "name": "Stromstärke"
+      },
+      "charge_energy_added": {
+        "name": "Geladene Energie"
+      },
+      "external_temp": {
+        "name": "Außentemperatur"
+      },
+      "battery_temp": {
+        "name": "Batterietemperatur"
+      },
+      "cabin_temp": {
+        "name": "Innenraumtemperatur"
+      },
+      "cabin_set_point": {
+        "name": "Innenraum-Solltemperatur"
+      },
+      "vehicle_temp": {
+        "name": "Fahrzeugtemperatur"
+      },
+      "battery_capacity": {
+        "name": "Batteriekapazität"
+      },
+      "reference_consumption": {
+        "name": "Referenzverbrauch"
+      },
+      "calibration_confidence": {
+        "name": "Kalibrierungsvertrauen"
+      },
+      "speed_factor": {
+        "name": "Geschwindigkeitsfaktor"
+      },
+      "charger_id": {
+        "name": "Ladesäulen-ID"
+      },
+      "max_speed": {
+        "name": "Höchstgeschwindigkeit"
+      },
+      "calibrated_max_speed": {
+        "name": "Kalibrierte Maximalgeschwindigkeit"
+      },
+      "firmware_version": {
+        "name": "Firmware-Version"
+      },
+      "weight": {
+        "name": "Gewicht"
+      },
+      "last_update": {
+        "name": "Letzte Aktualisierung"
+      },
+      "data_source": {
+        "name": "Datenquelle"
+      },
+      "arrival_time": {
+        "name": "Ankunftszeit"
+      },
+      "source_last_refresh": {
+        "name": "{source} letzte Aktualisierung"
+      },
+      "obd_last_refresh": {
+        "name": "OBD letzte Aktualisierung"
+      },
+      "vehicle_name": {
+        "name": "Fahrzeugname"
+      }
     },
     "binary_sensor": {
-      "charging": { "name": "Lädt" },
-      "driving": { "name": "Fährt" },
-      "parked": { "name": "Geparkt" },
-      "dc_charging": { "name": "DC-Schnellladen" },
-      "plugged_in": { "name": "Eingesteckt" },
-      "asleep": { "name": "Schläft" },
-      "source_connected": { "name": "{source} verbunden" },
-      "obd_connected": { "name": "OBD verbunden" },
-      "realtime_connected": { "name": "Echtzeit verbunden" }
+      "charging": {
+        "name": "Lädt"
+      },
+      "driving": {
+        "name": "Fährt"
+      },
+      "parked": {
+        "name": "Geparkt"
+      },
+      "dc_charging": {
+        "name": "DC-Schnellladen"
+      },
+      "plugged_in": {
+        "name": "Eingesteckt"
+      },
+      "asleep": {
+        "name": "Schläft"
+      },
+      "source_connected": {
+        "name": "{source} verbunden"
+      },
+      "obd_connected": {
+        "name": "OBD verbunden"
+      },
+      "realtime_connected": {
+        "name": "Echtzeit verbunden"
+      },
+      "navigating": {
+        "name": "Navigiert"
+      }
     },
     "device_tracker": {
-      "location": { "name": "Standort" },
-      "destination": { "name": "Ziel" }
+      "location": {
+        "name": "Standort"
+      },
+      "destination": {
+        "name": "Ziel"
+      }
     },
     "image": {
-      "car_image": { "name": "Fahrzeugbild" }
+      "car_image": {
+        "name": "Fahrzeugbild"
+      }
     },
     "number": {
-      "arrival_soc": { "name": "Ziel-Ladestand" },
-      "min_charger_stalls": { "name": "Minimale Ladepunkte" },
-      "extra_weight": { "name": "Zusatzgewicht" }
+      "arrival_soc": {
+        "name": "Ziel-Ladestand"
+      },
+      "min_charger_stalls": {
+        "name": "Minimale Ladepunkte"
+      },
+      "extra_weight": {
+        "name": "Zusatzgewicht"
+      }
     },
     "switch": {
-      "avoid_tolls": { "name": "Maut vermeiden" },
-      "avoid_ferries": { "name": "Fähren vermeiden" },
-      "avoid_borders": { "name": "Grenzübertritte vermeiden" },
-      "avoid_motorways": { "name": "Autobahnen vermeiden" },
-      "realtime_traffic": { "name": "Echtzeitverkehr" },
-      "realtime_weather": { "name": "Echtzeitwetter" },
-      "adjust_speed": { "name": "Geschwindigkeit an Limits anpassen" }
+      "avoid_tolls": {
+        "name": "Maut vermeiden"
+      },
+      "avoid_ferries": {
+        "name": "Fähren vermeiden"
+      },
+      "avoid_borders": {
+        "name": "Grenzübertritte vermeiden"
+      },
+      "avoid_motorways": {
+        "name": "Autobahnen vermeiden"
+      },
+      "realtime_traffic": {
+        "name": "Echtzeitverkehr"
+      },
+      "realtime_weather": {
+        "name": "Echtzeitwetter"
+      },
+      "adjust_speed": {
+        "name": "Geschwindigkeit an Limits anpassen"
+      }
     },
     "select": {
       "charge_stops": {
@@ -114,6 +238,18 @@
       },
       "drive_profile": {
         "name": "Fahrprofil"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Abfrageintervalle",
+        "data": {
+          "poll_interval_active": "Aktives Abfrageintervall (Sekunden, Echtzeit-Stream getrennt)",
+          "poll_interval_streaming": "Aktives Abfrageintervall (Sekunden, Echtzeit-Stream verbunden)",
+          "poll_interval_idle": "Abfrageintervall im Leerlauf (Sekunden)"
+        }
       }
     }
   }

@@ -37,6 +37,7 @@ const TOGGLES = {
   status: [
     ["show_last_seen", true, "mdi:clock-outline"],
     ["show_live_data", true, "mdi:link-variant"],
+    ["show_navigation", true, "mdi:navigation-variant"],
   ],
   buttons: [
     ["show_options", true, "mdi:tune-variant"],

@@ -31,7 +31,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: AbrpMateConfigEntry) -> 
 
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(_async_entry_updated))
     return True
+
+
+async def _async_entry_updated(hass: HomeAssistant, entry: AbrpMateConfigEntry) -> None:
+    """Reload when the options change.
+
+    The entry is also updated on every routine refresh-token rotation (its
+    ``data``); only an actual options change warrants a reload.
+    """
+    coordinator = entry.runtime_data
+    if coordinator is not None and coordinator.applied_options == dict(entry.options):
+        return
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: AbrpMateConfigEntry) -> bool:

@@ -178,6 +178,31 @@ export const cardStyles = css`
     color: var(--secondary-text-color);
     font-size: 0.95em;
   }
+  .nav-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--secondary-background-color);
+    font-size: 0.95em;
+  }
+  .nav-row ha-icon {
+    --mdc-icon-size: 18px;
+    color: var(--primary-color);
+  }
+  .nav-dest {
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .nav-meta {
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+  }
   .dot {
     display: inline-block;
     width: 7px;

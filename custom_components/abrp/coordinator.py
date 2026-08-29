@@ -15,6 +15,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import AbrpApi, AbrpApiError, Snapshot, Vehicle, build_snapshot, merge_tlm
 from .const import (
+    CONF_POLL_ACTIVE,
+    CONF_POLL_IDLE,
+    CONF_POLL_STREAMING,
     DOMAIN,
     POLL_INTERVAL_ACTIVE,
     POLL_INTERVAL_ACTIVE_STREAMING,
@@ -47,11 +50,29 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
     """
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        # Poll cadences, overridable (in seconds) through the options flow.
+        def _opt_interval(key: str, default: timedelta) -> timedelta:
+            value = entry.options.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                if value > 0:
+                    return timedelta(seconds=value)
+            return default
+
+        self._interval_active = _opt_interval(CONF_POLL_ACTIVE, POLL_INTERVAL_ACTIVE)
+        self._interval_streaming = _opt_interval(
+            CONF_POLL_STREAMING, POLL_INTERVAL_ACTIVE_STREAMING
+        )
+        self._interval_idle = _opt_interval(CONF_POLL_IDLE, POLL_INTERVAL_IDLE)
+        # Snapshot of the options this coordinator was built with, so the
+        # entry update listener can tell an options change (reload) apart
+        # from the routine refresh-token rotation (no reload).
+        self.applied_options: dict[str, Any] = dict(entry.options)
+
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=POLL_INTERVAL_IDLE,
+            update_interval=self._interval_idle,
         )
         self.entry = entry
         self._client = async_get_clientsession(hass)
@@ -135,10 +156,10 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         """
         active_ids = [vid for vid, s in snapshots.items() if _is_active(s)]
         if not active_ids:
-            return POLL_INTERVAL_IDLE
+            return self._interval_idle
         if all(self.stream_connected.get(vid) for vid in active_ids):
-            return POLL_INTERVAL_ACTIVE_STREAMING
-        return POLL_INTERVAL_ACTIVE
+            return self._interval_streaming
+        return self._interval_active
 
     def _sync_streams(self, snapshots: dict[int, Snapshot]) -> None:
         """Ensure a realtime SSE stream is running for each known vehicle."""

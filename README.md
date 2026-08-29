@@ -92,10 +92,10 @@ self-contained module shipped with the integration; to hack on it run
 
 | Type | Entities |
 | --- | --- |
-| Sensor | State of charge, State of energy, Battery health, Power, Charging power, HVAC power, Charging state, Driving state, Speed, Heading, Odometer, Estimated range, Elevation, Voltage, Current, Charge energy added, External / Battery / Cabin / Vehicle temperature, Cabin set point, Battery capacity, Reference consumption, Calibration confidence, Speed factor, Charger ID, Max speed, Weight, Last update, Data source, per-source last refresh (e.g. Enode / OBD) |
-| Binary sensor | Charging, Driving, Parked, DC fast charging, Plugged in, Asleep, "{Source} connected" (e.g. Enode connected), OBD connected, Realtime connected |
+| Sensor | State of charge, State of energy, Battery health, Power, Charging power, HVAC power, Charging state, Driving state, Speed, GPS speed (the phone's speed while navigating), Road, Speed limit, Arrival time (ETA of the active plan), Heading, Odometer, Estimated range, Elevation, Voltage, Current, Charge energy added, External / Battery / Cabin / Vehicle temperature, Cabin set point, Battery capacity, Reference consumption, Calibration confidence, Speed factor, Charger ID, Max speed, Calibrated maximum speed, Firmware version, Weight, Last update, Data source, per-source last refresh (e.g. Enode / OBD) |
+| Binary sensor | Charging, Driving, Parked, DC fast charging, Plugged in, Asleep, Navigating, "{Source} connected" (e.g. Enode connected), OBD connected, Realtime connected |
 | Image | Car image (the ABRP render of your model and paint) |
-| Device tracker | GPS location (with heading, speed, country, timezone attributes) |
+| Device tracker | GPS location (with heading, speed, address, speed limit, country, timezone attributes), Destination (the active navigation plan's final stop, with destination name, origin, distance, duration attributes) |
 | Select | Drive profile (the vehicle's ABRP configurations, e.g. Standard / winter tyres) |
 
 ### Account ("ABRP" device) — route-planning preferences
@@ -114,8 +114,9 @@ These are account-wide ABRP settings; changes made here sync to the ABRP app
 - **Login:** OAuth2 with a QR/connect link; only the (rotating) refresh token is
   stored, and the access token is used to talk to ABRP's API.
 - **Telemetry:** a live server-sent-events stream delivers updates while the car
-  is active, backed by an adaptive `get_tlm` poll (faster when active, ~10 min
-  when idle).
+  is active, backed by an adaptive `get_tlm` poll (fast when active without the
+  stream, relaxed while the stream is connected, ~10 min when idle). The three
+  cadences can be tuned under the integration's **Configure** options.
 - **Settings:** read via `get_session`, written via `set_settings`, and kept in
   sync near-realtime by watching ABRP's settings version.
 

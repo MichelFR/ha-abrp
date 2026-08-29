@@ -123,6 +123,11 @@ POLL_INTERVAL_ACTIVE = timedelta(seconds=10)
 POLL_INTERVAL_ACTIVE_STREAMING = timedelta(minutes=5)
 POLL_INTERVAL_IDLE = timedelta(minutes=10)
 
+# Options-flow keys overriding the poll cadences above (values in seconds).
+CONF_POLL_ACTIVE = "poll_interval_active"
+CONF_POLL_STREAMING = "poll_interval_streaming"
+CONF_POLL_IDLE = "poll_interval_idle"
+
 # Number of times the config flow polls login/abrp/status while waiting for the
 # user to approve the connect link, and the delay between polls.
 # Runs in the background, so a generous window (90 * 2s = 3 min) is fine.

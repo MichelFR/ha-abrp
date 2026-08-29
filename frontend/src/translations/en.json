@@ -9,7 +9,9 @@
     "charging": "Charging",
     "connected": "Connected",
     "sleeping": "Sleeping",
-    "offline": "Offline"
+    "offline": "Offline",
+    "eta": "ETA {time}",
+    "destination": "Destination"
   },
   "time": {
     "just_now": "just now",
@@ -99,7 +101,8 @@
     "show_last_seen": "Show last seen",
     "show_live_data": "Show Live data link",
     "show_options": "Show Options button",
-    "show_live_data_button": "Show Live data button"
+    "show_live_data_button": "Show Live data button",
+    "show_navigation": "Show active navigation"
   },
   "short": {
     "show_image": "Car image",
@@ -109,7 +112,8 @@
     "show_last_seen": "Last seen",
     "show_live_data": "Live data link",
     "show_options": "Options button",
-    "show_live_data_button": "Live data button"
+    "show_live_data_button": "Live data button",
+    "show_navigation": "Navigation"
   },
   "slot": {
     "image": {

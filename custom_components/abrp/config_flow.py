@@ -19,12 +19,27 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlow, ConfigFlowResult
+import voluptuous as vol
+
+from homeassistant.config_entries import (
+    SOURCE_REAUTH,
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CONF_POLL_ACTIVE,
+    CONF_POLL_IDLE,
+    CONF_POLL_STREAMING,
     CONF_REFRESH_TOKEN,
     DOMAIN,
+    POLL_INTERVAL_ACTIVE,
+    POLL_INTERVAL_ACTIVE_STREAMING,
+    POLL_INTERVAL_IDLE,
     SESSION_POLL_ATTEMPTS,
     SESSION_POLL_INTERVAL_SECONDS,
 )
@@ -37,6 +52,12 @@ class AbrpMateConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the ABRP Mate OAuth2 + QR login flow."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> AbrpMateOptionsFlow:
+        """Return the options flow (poll-interval overrides)."""
+        return AbrpMateOptionsFlow()
 
     def __init__(self) -> None:
         self._oauth: AbrpOAuth | None = None
@@ -150,3 +171,39 @@ def _qr_data_uri(data: str) -> str:
     image.save(buffer, format="PNG")
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return f"data:image/png;base64,{encoded}"
+
+
+class AbrpMateOptionsFlow(OptionsFlow):
+    """Options: override the adaptive get_tlm poll cadences (in seconds)."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        options = self.config_entry.options
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_POLL_ACTIVE,
+                    default=options.get(
+                        CONF_POLL_ACTIVE, int(POLL_INTERVAL_ACTIVE.total_seconds())
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=3600)),
+                vol.Required(
+                    CONF_POLL_STREAMING,
+                    default=options.get(
+                        CONF_POLL_STREAMING,
+                        int(POLL_INTERVAL_ACTIVE_STREAMING.total_seconds()),
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=30, max=3600)),
+                vol.Required(
+                    CONF_POLL_IDLE,
+                    default=options.get(
+                        CONF_POLL_IDLE, int(POLL_INTERVAL_IDLE.total_seconds())
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=60, max=86400)),
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)
