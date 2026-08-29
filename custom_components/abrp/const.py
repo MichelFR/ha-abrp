@@ -115,9 +115,12 @@ SETTINGS_REFRESH_INTERVAL = timedelta(minutes=30)
 
 # Adaptive get_tlm poll cadence. The realtime SSE stream delivers live updates
 # while a vehicle is active, so the poll is mostly a baseline/fallback: poll
-# slowly when every vehicle is idle (asleep/parked), faster when one is active
-# (connected, charging or driving).
+# slowly when every vehicle is idle (asleep/parked), and fast for an active
+# vehicle only while its SSE stream is down. With the stream connected the poll
+# only needs to catch what the stream doesn't carry (vehicle list, settings
+# version, vehicle-level status), so it can run close to the idle cadence.
 POLL_INTERVAL_ACTIVE = timedelta(seconds=10)
+POLL_INTERVAL_ACTIVE_STREAMING = timedelta(minutes=5)
 POLL_INTERVAL_IDLE = timedelta(minutes=10)
 
 # Number of times the config flow polls login/abrp/status while waiting for the

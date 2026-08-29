@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.3
+
+### Changed
+
+- **Far fewer API requests while driving or charging.** The integration used to
+  poll `get_tlm` every 10 seconds whenever a vehicle was active, even though the
+  realtime SSE stream already delivers the same live telemetry. While the
+  stream is connected for every active vehicle, the poll now relaxes to every
+  5 minutes (it only needs to catch what the stream doesn't carry: the vehicle
+  list, settings version, and vehicle-level status). The 10-second poll remains
+  as a fallback whenever an active vehicle's stream drops. Thanks to
+  [@frenck](https://github.com/frenck) for pointing this out in the
+  [HACS review](https://github.com/hacs/default/pull/8362#pullrequestreview-4990044409).
+
 ## 1.2.2
 
 ### Added

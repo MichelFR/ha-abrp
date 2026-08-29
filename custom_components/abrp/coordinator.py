@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,6 +17,7 @@ from .api import AbrpApi, AbrpApiError, Snapshot, Vehicle, build_snapshot, merge
 from .const import (
     DOMAIN,
     POLL_INTERVAL_ACTIVE,
+    POLL_INTERVAL_ACTIVE_STREAMING,
     POLL_INTERVAL_IDLE,
     SETTINGS_REFRESH_INTERVAL,
 )
@@ -120,13 +122,23 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
             merged[vehicle_id] = build_snapshot(item, self._tlm[vehicle_id])
 
         self._sync_streams(merged)
-        # Poll faster only while a vehicle is active; idle vehicles barely change.
-        self.update_interval = (
-            POLL_INTERVAL_ACTIVE
-            if any(_is_active(s) for s in merged.values())
-            else POLL_INTERVAL_IDLE
-        )
+        self.update_interval = self._poll_interval(merged)
         return merged
+
+    def _poll_interval(self, snapshots: dict[int, Snapshot]) -> timedelta:
+        """Pick the get_tlm cadence for the current vehicle state.
+
+        Idle vehicles barely change, so poll slowly. An active vehicle only
+        needs the fast poll while its SSE stream is down; with the stream
+        delivering live telemetry the poll is just a baseline and can stay
+        near the idle cadence.
+        """
+        active_ids = [vid for vid, s in snapshots.items() if _is_active(s)]
+        if not active_ids:
+            return POLL_INTERVAL_IDLE
+        if all(self.stream_connected.get(vid) for vid in active_ids):
+            return POLL_INTERVAL_ACTIVE_STREAMING
+        return POLL_INTERVAL_ACTIVE
 
     def _sync_streams(self, snapshots: dict[int, Snapshot]) -> None:
         """Ensure a realtime SSE stream is running for each known vehicle."""
@@ -151,6 +163,9 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
     def _handle_stream_state(self, vehicle_id: int, connected: bool) -> None:
         """Reflect a realtime stream (dis)connecting in the entities."""
         self.stream_connected[vehicle_id] = connected
+        # A dropped stream re-arms the fast poll for an active vehicle; a
+        # (re)connected stream lets it relax again.
+        self.update_interval = self._poll_interval(self.data or {})
         self.async_update_listeners()
 
     async def async_set_settings(self, changes: dict[str, Any]) -> None:
@@ -191,9 +206,11 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         data = dict(self.data or {})
         data[vehicle_id] = snapshot
         self.async_set_updated_data(data)
-        # A live event means the vehicle just became active; speed up polling.
-        if _is_active(snapshot) and self.update_interval != POLL_INTERVAL_ACTIVE:
-            self.update_interval = POLL_INTERVAL_ACTIVE
+        # A live event may mean a vehicle just became active; re-pick the
+        # cadence (still relaxed here, since this event came from the stream).
+        interval = self._poll_interval(data)
+        if self.update_interval != interval:
+            self.update_interval = interval
 
     async def async_shutdown(self) -> None:
         """Stop all realtime streams when the entry unloads."""
