@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.8
+
+### Changed
+
+- **Parked/driving status also keeps its last known value** instead of aging
+  to unknown — like SoC and location, "parked" is a state the car stays in.
+  Of the realtime signals, only speed, power, HVAC power, voltage, current,
+  and the charging flags still return to unknown when stale.
+
 ## 1.2.7
 
 ### Added

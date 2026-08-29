@@ -341,15 +341,16 @@ _FIELD_TTL: dict[str, int] = {
 # The realtime signals aged out of the entity values themselves (soh is here
 # only for its ==0 validity rule; its month-long window never bites).
 # Everything else — SoC, SoE, range, odometer, capacity, temperatures,
-# location/heading/elevation, calibrations, and the charge-energy-added
-# session total — keeps its last known value.
+# location/heading/elevation, calibrations, the charge-energy-added session
+# total, and the parked/driving status — keeps its last known value. Only
+# the charging flags still age, so a missed end-of-charge event can't leave
+# "Charging" stuck on.
 _ENTITY_AGED_FIELDS = (
     "speed",
     "power",
     "hvac_power",
     "voltage",
     "current",
-    "is_parked",
     "is_charging",
     "is_dcfc",
     "soh",
