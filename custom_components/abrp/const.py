@@ -44,8 +44,8 @@ USER_AGENT = (
 # These are extracted from the ABRP web bundle; the values below are the
 # last-known-good fallbacks used if scraping fails. Keep them current.
 FALLBACK_API_KEY = "f4128c06-5e39-4852-95f9-3286712a9f3a"
-FALLBACK_APP_VERSION = "7.1.2"
-FALLBACK_APP_BUILD_NUMBER = "5875"
+FALLBACK_APP_VERSION = "7.1.7"
+FALLBACK_APP_BUILD_NUMBER = "5980"
 
 # How long a scraped metadata result stays cached before it is refreshed.
 METADATA_TTL = timedelta(hours=6)

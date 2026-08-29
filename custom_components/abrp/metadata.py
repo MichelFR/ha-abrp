@@ -30,8 +30,14 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 _BUNDLE_RE = re.compile(r'src="(/_expo/static/js/[^"]+\.js)"')
+# Bundles reference their lazy-loaded chunks by URL path (the app code moved
+# into an ``App-*.js`` chunk when ABRP split its formerly single bundle).
+_CHUNK_RE = re.compile(r"/_expo/static/js/[\w./-]+\.js")
 _API_KEY_RE = re.compile(r"API_KEY:'([0-9a-fA-F-]{16,})'")
 _VERSION_RE = re.compile(r'version:"(\d+\.\d+\.\d+)",buildNumber:"(\d+)"')
+
+# Hard cap on how many bundles/chunks one scrape will fetch.
+_MAX_BUNDLES = 8
 
 
 @dataclass(frozen=True)
@@ -85,42 +91,61 @@ async def async_get_metadata(
 
 
 async def _scrape(session: aiohttp.ClientSession) -> AbrpMetadata:
-    """Fetch the web app and extract the metadata values."""
+    """Fetch the web app and extract the metadata values.
+
+    The values used to sit in a single web bundle; ABRP has since split the
+    app into several script bundles plus lazy-loaded chunks (the app code,
+    with the API key and version, lives in an ``App-*.js`` chunk that only
+    the entry bundle references). So we scan every script bundle from the
+    index page and follow chunk URLs discovered inside them until the values
+    are found.
+    """
     headers = {"user-agent": USER_AGENT}
 
     async with session.get(ABRP_HOME_URL, headers=headers) as response:
         response.raise_for_status()
         index_html = await response.text()
 
-    match = _BUNDLE_RE.search(index_html)
-    if match is None:
-        raise ValueError("could not locate the ABRP web bundle URL")
-    bundle_url = ABRP_HOME_URL.rstrip("/") + match.group(1)
+    base_url = ABRP_HOME_URL.rstrip("/")
+    queue = [base_url + path for path in _BUNDLE_RE.findall(index_html)]
+    if not queue:
+        raise ValueError("could not locate any ABRP web bundle URL")
+    seen = set(queue)
 
     api_key: str | None = None
     version: str | None = None
     build: str | None = None
-    scanned = 0
-    buffer = ""
 
-    async with session.get(bundle_url, headers=headers) as response:
-        response.raise_for_status()
-        async for chunk in response.content.iter_chunked(256 * 1024):
-            scanned += len(chunk)
-            # Keep a small overlap so matches that span chunk boundaries survive.
-            buffer = buffer[-512:] + chunk.decode("utf-8", errors="replace")
+    while queue:
+        bundle_url = queue.pop(0)
+        scanned = 0
+        buffer = ""
+        async with session.get(bundle_url, headers=headers) as response:
+            response.raise_for_status()
+            async for chunk in response.content.iter_chunked(256 * 1024):
+                scanned += len(chunk)
+                # Keep a small overlap so matches spanning chunk boundaries
+                # survive.
+                buffer = buffer[-512:] + chunk.decode("utf-8", errors="replace")
 
-            if api_key is None and (m := _API_KEY_RE.search(buffer)):
-                api_key = m.group(1)
-            if version is None and (m := _VERSION_RE.search(buffer)):
-                version, build = m.group(1), m.group(2)
+                if api_key is None and (m := _API_KEY_RE.search(buffer)):
+                    api_key = m.group(1)
+                if version is None and (m := _VERSION_RE.search(buffer)):
+                    version, build = m.group(1), m.group(2)
+                if api_key and version and build:
+                    return AbrpMetadata(
+                        api_key=api_key,
+                        app_version=version,
+                        app_build_number=build,
+                    )
 
-            if api_key and version and build:
-                break
-            if scanned >= METADATA_SCAN_LIMIT_BYTES:
-                break
+                for path in _CHUNK_RE.findall(buffer):
+                    chunk_url = base_url + path
+                    if chunk_url not in seen and len(seen) < _MAX_BUNDLES:
+                        seen.add(chunk_url)
+                        queue.append(chunk_url)
 
-    if not (api_key and version and build):
-        raise ValueError("metadata values not found in the web bundle")
+                if scanned >= METADATA_SCAN_LIMIT_BYTES:
+                    break
 
-    return AbrpMetadata(api_key=api_key, app_version=version, app_build_number=build)
+    raise ValueError("metadata values not found in the web bundles")

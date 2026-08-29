@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.4
+
+### Fixed
+
+- **Metadata scrape silently failing since ABRP split its web bundle.** The
+  API key, app version (`x-abrp-version`), and build number are scraped from
+  the ABRP web app at runtime. ABRP recently split its formerly single web
+  bundle into several script bundles plus lazy-loaded chunks, and the values
+  now live in an `App-*.js` chunk that only the entry bundle references — so
+  the scraper found nothing and the integration silently ran on stale
+  fallbacks. The scraper now scans every script bundle from the index page
+  and follows chunk URLs discovered inside them until the values are found.
+- **Updated fallback metadata** to the current live values (app version
+  7.1.7, build 5980; the API key is unchanged), used if scraping ever fails.
+
 ## 1.2.3
 
 ### Changed
