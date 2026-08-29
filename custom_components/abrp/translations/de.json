@@ -43,6 +43,7 @@
         }
       },
       "speed": { "name": "Geschwindigkeit" },
+      "gps_speed": { "name": "GPS-Geschwindigkeit" },
       "heading": { "name": "Fahrtrichtung" },
       "odometer": { "name": "Kilometerstand" },
       "range": { "name": "Geschätzte Reichweite" },

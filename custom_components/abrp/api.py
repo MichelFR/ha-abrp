@@ -65,6 +65,10 @@ class Snapshot:
     current_a: float | None = None
     odometer_km: float | None = None
     speed_kmh: float | None = None
+    # Speed measured by the ABRP app's phone GPS (only flows while the user
+    # is navigating). ABRP hides it from its own speed display; we surface it
+    # as a separate sensor instead of dropping it.
+    gps_speed_kmh: float | None = None
     latitude: float | None = None
     longitude: float | None = None
     heading_deg: float | None = None
@@ -291,7 +295,7 @@ _MONTH = 2592000
 # Per-field staleness windows in seconds. A field older than its window is
 # blanked. Fields absent here never go stale on their own.
 _FIELD_TTL: dict[str, int] = {
-    "soc": _WEEK,
+    "soc": _DAY,
     "soe": _DAY,
     "power": 300,
     "hvac_power": 300,
@@ -309,6 +313,10 @@ _FIELD_TTL: dict[str, int] = {
     "ext_temp": _HOUR,
     "batt_temp": _HOUR,
     "cabin_temp": _HOUR,
+    "lat": _WEEK,
+    "lon": _WEEK,
+    "heading": _WEEK,
+    "elevation": _WEEK,
 }
 # Calibration values ABRP keeps "sticky": an update only replaces them if its
 # timestamp is strictly newer (never on a tie).
@@ -383,19 +391,18 @@ def merge_tlm(
         else:
             ts_store = _num0(s_ts.get(key, s_utc)) if key in store else 0.0
             ts_update = _num0(u_ts.get(key, u_utc))
-            # ABRP prefers an OBD SoC over a coarser Android-Auto one when the
-            # two are within 30 s of each other.
+            # ABRP keeps an already-held OBD SoC over an incoming coarser
+            # Android-Auto one unless the latter is at least 30 s newer.
             soc_tiebreak = (
                 key == "soc"
-                and s_prov.get("soc") == "android_auto"
-                and u_prov.get("soc") == "obdble"
-                and ts_store - ts_update < 30
+                and s_prov.get("soc") in ("obdble", "abrpobd")
+                and u_prov.get("soc") == "android_auto"
+                and ts_update - ts_store < 30
             )
             store_wins = (
                 key in store
-                and ts_store > ts_update
+                and (ts_store > ts_update or soc_tiebreak)
                 and key not in _STICKY_FIELDS
-                and not soc_tiebreak
             )
             if store_wins:
                 value, ts, prov = store.get(key), ts_store, s_prov.get(key)
@@ -443,16 +450,26 @@ def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot
     last_seen = max(ota_time, tlm_time, _num0(tlm.get("utc")))
     ota_type = _as_str(item.get("ota_tlm_type"))
     tlm_type = _as_str(item.get("tlm_type"))
-    source = ota_type if (ota_time == last_seen and ota_type) else (tlm_type or ota_type)
+    source = ota_type if ota_time == last_seen else tlm_type
     recorded_at = (
         datetime.fromtimestamp(last_seen, tz=timezone.utc)
         if last_seen > 0
         else datetime.now(timezone.utc)
     )
-    soc_ts = _num0(_as_dict(tlm.get("timestamps")).get("soc"))
+    timestamps = _as_dict(tlm.get("timestamps"))
+    soc_ts = _num0(timestamps.get("soc"))
     soc_last_seen = (
         datetime.fromtimestamp(soc_ts, tz=timezone.utc) if soc_ts > 0 else None
     )
+
+    # ABRP shows a speed only while its measurement is under 10 s old, and
+    # never a GPS-derived one; we surface the GPS (navigation) speed as its
+    # own value instead of dropping it.
+    speed = _as_float(tlm.get("speed"))
+    speed_ts = _num0(timestamps.get("speed")) or _num0(tlm.get("utc"))
+    if time.time() - speed_ts >= 10:
+        speed = None
+    speed_is_gps = providers.get("speed") == "gps"
 
     return Snapshot(
         vehicle_id=item["vehicle_id"],
@@ -474,10 +491,8 @@ def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot
         cabin_temp_c=_as_float(tlm.get("cabin_temp")),
         batt_temp_c=_as_float(tlm.get("batt_temp")),
         vehicle_temp_c=_as_float(tlm.get("vehicle_temp")),
-        # ABRP hides GPS-derived speed; only surface a non-GPS reading.
-        speed_kmh=_as_float(tlm.get("speed"))
-        if providers.get("speed") != "gps"
-        else None,
+        speed_kmh=speed if not speed_is_gps else None,
+        gps_speed_kmh=speed if speed_is_gps else None,
         estimated_range_km=_as_float(tlm.get("est_battery_range")),
         battery_capacity_kwh=_first_float(
             tlm.get("battery_capacity"), tlm.get("capacity")

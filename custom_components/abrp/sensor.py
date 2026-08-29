@@ -187,6 +187,16 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: s.speed_kmh,
     ),
+    # The phone's GPS speed while navigating in the ABRP app. ABRP itself
+    # never displays it, but for app-only vehicles it is the only live speed.
+    AbrpSensorDescription(
+        key="gps_speed",
+        translation_key="gps_speed",
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        device_class=SensorDeviceClass.SPEED,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.gps_speed_kmh,
+    ),
     AbrpSensorDescription(
         key="odometer",
         translation_key="odometer",

@@ -54,9 +54,12 @@ class AbrpMateDeviceTracker(AbrpMateEntity, TrackerEntity):
         snapshot = self.snapshot
         if snapshot is None:
             return None
+        speed = snapshot.speed_kmh
+        if speed is None:
+            speed = snapshot.gps_speed_kmh
         return {
             "heading": snapshot.heading_deg,
-            "speed_kmh": snapshot.speed_kmh,
+            "speed_kmh": speed,
             "country": snapshot.country3,
             "timezone": snapshot.timezone,
         }

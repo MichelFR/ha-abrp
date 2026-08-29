@@ -250,6 +250,7 @@ _PROVIDER_MAP = {
     "TLM_API": "api",
     "TRONITY_POLL": "tronity",
     "DERIVED": "derived",
+    "CARSCANNER": "carscanner",
 }
 
 # event sub-object -> (tlm field, converter from the sub-object to a value in

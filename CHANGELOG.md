@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.2.5
+
+This release re-verifies our telemetry handling against the current ABRP web
+app and fixes every deviation found — and where ABRP silently *hides* data,
+it is now surfaced through separate entities instead of dropped.
+
+### Added
+
+- **New "GPS speed" sensor.** The speed measured by the phone while navigating
+  in the ABRP app. ABRP itself never displays GPS-derived speed, and the
+  regular Speed sensor mirrors that — but for vehicles whose only data source
+  is the app, this was live data being thrown away. It now has its own sensor.
+
+### Fixed
+
+- **SoC could show a week-old reading.** ABRP now ages a SoC reading out after
+  one day; ours still used the old one-week window.
+- **Location, heading, and elevation never went stale.** ABRP blanks them
+  after one week without a fix; ours kept them forever.
+- **Speed showed readings up to 30 s old.** ABRP only displays a speed whose
+  measurement is under 10 s old (it keeps flowing live from the realtime
+  stream while driving); ours now matches.
+- **OBD-vs-Android-Auto SoC tiebreak matched ABRP only in one direction.**
+  ABRP keeps an already-held OBD SoC unless an incoming Android-Auto reading
+  is at least 30 s newer — and also treats the standalone ABRP OBD dongle
+  (`abrpobd`) as OBD. Ours had the rule inverted and only knew `obdble`.
+- **"Data source" now uses ABRP's exact rule** (the cloud provider only while
+  it is the freshest source, the direct source otherwise) instead of extra
+  fallbacks ABRP doesn't have.
+- **Car Scanner telemetry events from the realtime stream were dropped** —
+  the stream's provider map was missing `CARSCANNER`.
+
 ## 1.2.4
 
 ### Fixed

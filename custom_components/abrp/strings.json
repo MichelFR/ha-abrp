@@ -57,6 +57,9 @@
       "speed": {
         "name": "Speed"
       },
+      "gps_speed": {
+        "name": "GPS speed"
+      },
       "heading": {
         "name": "Heading"
       },
