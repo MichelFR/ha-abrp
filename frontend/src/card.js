@@ -252,7 +252,14 @@ export class AbrpVehicleCard extends LitElement {
       vehicle.device?.name ||
       this._t("card.vehicle");
     const socState = this._vs("sensor.soc");
-    const soc = num(socState);
+    // Like ABRP, the headline SoC blanks once the reading is over a day old
+    // (the entity itself keeps the last known value).
+    const socTs = Number(
+      this._vs("sensor.data_source")?.attributes?.timestamps?.soc
+    );
+    const socStale =
+      Number.isFinite(socTs) && socTs > 0 && Date.now() / 1000 - socTs > 86400;
+    const soc = socStale ? null : num(socState);
     const image = this._vs("image.car_image");
     const imageSrc =
       image?.attributes?.entity_picture ||

@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.7
+
+### Added
+
+- **New "Destination" device tracker** with the GPS coordinates of the active
+  ABRP navigation plan's final stop — it zones like any tracker, so
+  automations can react to where you are heading. Attributes carry the
+  destination name, origin, planned distance and duration, waypoint count,
+  and the plan uuid. Unknown while no plan is active.
+
+### Changed
+
+- **Entities keep their last known value.** ABRP-style staleness no longer
+  blanks entity values, except genuinely realtime signals (speed, power,
+  HVAC power, voltage, current, and the
+  charging/parked flags), which still return to unknown when stale — a
+  minutes-old power reading or a stuck "Charging" would be actively wrong.
+  The 10-second speed display rule from 1.2.5 is likewise gone from the
+  entities.
+- **The custom card still applies ABRP's exact staleness at display time**
+  (per-field, using new measurement timestamps exposed on the data-source
+  sensor), so the card matches ABRP while the entities stay informative.
+
 ## 1.2.6
 
 The card's Live data view is now a faithful copy of ABRP's own live data

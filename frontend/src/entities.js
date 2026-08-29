@@ -44,7 +44,7 @@ export const KNOWN_KEYS = {
   ],
   binary_sensor: ["charging"],
   image: ["car_image"],
-  device_tracker: ["location"],
+  device_tracker: ["destination", "location"],
 };
 
 export function abrpEntities(hass) {

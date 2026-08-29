@@ -168,6 +168,29 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         self.update_interval = self._poll_interval(self.data or {})
         self.async_update_listeners()
 
+    def active_plan(self, vehicle_id: int) -> dict[str, Any] | None:
+        """The account's active navigation plan, if it belongs to this vehicle.
+
+        ABRP stores the active plan's uuid in ``settings.plan_uuid`` (null
+        when not navigating) and keeps the plan's summary — destinations with
+        coordinates and names, distance, duration — in ``recent_plans`` /
+        ``plan_history``. Plans are account-level; ``selected_vehicle_id``
+        says which vehicle they are for.
+        """
+        settings = self.settings
+        uuid = settings.get("plan_uuid")
+        if not isinstance(uuid, str) or not uuid:
+            return None
+        selected = settings.get("selected_vehicle_id")
+        if isinstance(selected, int) and selected != vehicle_id:
+            return None
+        for entry in (settings.get("recent_plans") or []) + (
+            settings.get("plan_history") or []
+        ):
+            if isinstance(entry, dict) and entry.get("plan_uuid") == uuid:
+                return entry
+        return None
+
     async def async_set_settings(self, changes: dict[str, Any]) -> None:
         """Update one or more account planning settings and reflect them locally."""
         api = await self._async_ensure_api()

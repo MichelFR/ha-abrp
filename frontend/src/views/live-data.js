@@ -6,15 +6,55 @@ import { html } from "lit";
 import { cap, num, relTime } from "../format.js";
 import { localize } from "../localize.js";
 
+// ABRP's per-field staleness windows (seconds). The entities keep their last
+// known value; the card blanks stale fields at display time, like ABRP.
+const HOUR = 3600;
+const DAY = 86400;
+const WEEK = 604800;
+const MONTH = 2592000;
+const FIELD_TTL = {
+  soc: DAY,
+  soe: DAY,
+  power: 300,
+  hvac_power: 300,
+  speed: 30,
+  capacity: MONTH,
+  kwh_charged: 300,
+  soh: MONTH,
+  voltage: 300,
+  current: 300,
+  odometer: WEEK,
+  est_battery_range: DAY,
+  ext_temp: HOUR,
+  batt_temp: HOUR,
+  cabin_temp: HOUR,
+  lat: WEEK,
+  lon: WEEK,
+  heading: WEEK,
+  elevation: WEEK,
+};
+
 export function renderLiveData(card) {
   const t = (key) => localize(card.hass, key);
-  const providers =
-    card._vs("sensor.data_source")?.attributes?.providers || {};
+  const dsAttrs = card._vs("sensor.data_source")?.attributes || {};
+  const providers = dsAttrs.providers || {};
+  const timestamps = dsAttrs.timestamps || {};
+  const now = Date.now() / 1000;
+  // A field is shown only while inside its ABRP staleness window (fields
+  // without a window, or without a timestamp, never go stale here).
+  const fresh = (field) => {
+    if (!field) return true;
+    const ttl = FIELD_TTL[field];
+    const ts = Number(timestamps[field]);
+    if (ttl == null || !Number.isFinite(ts) || ts <= 0) return true;
+    return now - ts <= ttl;
+  };
   const provider = (key, fallback = t("live.estimate")) =>
     cap(providers[key]) || fallback;
   const unit = (key, fallback) =>
     card._vs(key)?.attributes?.unit_of_measurement ?? fallback;
-  const val = (key) => {
+  const val = (key, field) => {
+    if (field && !fresh(field)) return null;
     const v = Number(card._vs(key)?.state);
     return Number.isFinite(v) ? v : null;
   };
@@ -23,7 +63,7 @@ export function renderLiveData(card) {
 
   // Power: like ABRP, shown positive while charging, and when the reading is
   // derived, attributed to the current sensor's source instead.
-  const rawPower = val("sensor.power");
+  const rawPower = val("sensor.power", "power");
   const charging = card._vs("binary_sensor.charging")?.state === "on";
   const power = rawPower == null ? null : charging ? -rawPower : rawPower;
   const powerProv =
@@ -32,7 +72,7 @@ export function renderLiveData(card) {
       : providers.power;
 
   // Degradation = 100 - SoH, exactly what ABRP's live data shows.
-  const soh = val("sensor.soh");
+  const soh = val("sensor.soh", "soh");
   const degradation = soh == null ? null : 100 - soh;
 
   // ABRP shows the calibrated reference consumption only alongside a
@@ -49,19 +89,23 @@ export function renderLiveData(card) {
   const maxSpeedProv = calMax != null ? provider("calib_max_speed") : provider("max_speed");
 
   // Location: the street address from ABRP's mapInfo (live while
-  // navigating); the tracker zone as fallback.
+  // navigating); the tracker zone as fallback. Stale like ABRP's map pin.
   const tracker = card._vs("device_tracker.location");
   const address = tracker?.attributes?.address;
-  const location =
-    address || (tracker?.state && tracker.state !== "unknown" ? tracker.state : null);
+  const location = !fresh("lat")
+    ? null
+    : address ||
+      (tracker?.state && tracker.state !== "unknown" ? tracker.state : null);
 
   const speedFactor = val("sensor.speed_factor");
   const firmware = card._vs("sensor.firmware_version")?.state;
+  const socValue = val("sensor.soc", "soc");
+  const hvac = val("sensor.hvac_power", "hvac_power");
 
   // [title, value, unit, provider, entity key for more-info] — ABRP's live
-  // data items in its order; null values drop the tile like ABRP does.
+  // data items in its order; null/stale values drop the tile like ABRP does.
   const tiles = [
-    [t("live.soc"), num(card._vs("sensor.soc")), "%", provider("soc"), "sensor.soc"],
+    [t("live.soc"), socValue == null ? null : socValue.toFixed(0), "%", provider("soc"), "sensor.soc"],
     [
       t("live.power"),
       power == null ? null : fmt(power),
@@ -71,21 +115,21 @@ export function renderLiveData(card) {
     ],
     [
       t("live.hvac_power"),
-      val("sensor.hvac_power") == null ? null : fmt(val("sensor.hvac_power")),
+      hvac == null ? null : fmt(hvac),
       "kW",
       provider("hvac_power"),
       "sensor.hvac_power",
     ],
     [
       t("live.range"),
-      num(card._vs("sensor.range")),
+      val("sensor.range", "est_battery_range")?.toFixed(0) ?? null,
       unit("sensor.range", "km"),
       provider("est_battery_range"),
       "sensor.range",
     ],
     [
       t("live.voltage"),
-      num(card._vs("sensor.voltage")),
+      val("sensor.voltage", "voltage")?.toFixed(0) ?? null,
       "V",
       provider("voltage"),
       "sensor.voltage",
@@ -99,7 +143,7 @@ export function renderLiveData(card) {
     ],
     [
       t("live.batt_temp"),
-      num(card._vs("sensor.battery_temp")),
+      val("sensor.battery_temp", "batt_temp")?.toFixed(0) ?? null,
       unit("sensor.battery_temp", "°C"),
       provider("batt_temp"),
       "sensor.battery_temp",
@@ -113,7 +157,7 @@ export function renderLiveData(card) {
     ],
     [
       t("live.capacity"),
-      num(card._vs("sensor.battery_capacity")),
+      val("sensor.battery_capacity", "capacity")?.toFixed(0) ?? null,
       "kWh",
       provider("battery_capacity", provider("capacity")),
       "sensor.battery_capacity",
@@ -128,28 +172,28 @@ export function renderLiveData(card) {
     [t("live.max_speed"), maxSpeed, unit("sensor.calibrated_max_speed", "km/h"), maxSpeedProv, "sensor.calibrated_max_speed"],
     [
       t("live.soe"),
-      num(card._vs("sensor.soe"), 1),
+      val("sensor.soe", "soe")?.toFixed(1) ?? null,
       "kWh",
       provider("soe"),
       "sensor.soe",
     ],
     [
       t("live.inside_temp"),
-      num(card._vs("sensor.cabin_temp")),
+      val("sensor.cabin_temp", "cabin_temp")?.toFixed(0) ?? null,
       unit("sensor.cabin_temp", "°C"),
       provider("cabin_temp"),
       "sensor.cabin_temp",
     ],
     [
       t("live.outside_temp"),
-      num(card._vs("sensor.external_temp")),
+      val("sensor.external_temp", "ext_temp")?.toFixed(0) ?? null,
       unit("sensor.external_temp", "°C"),
       provider("ext_temp"),
       "sensor.external_temp",
     ],
     [
       t("live.odometer"),
-      num(card._vs("sensor.odometer")),
+      val("sensor.odometer", "odometer")?.toFixed(0) ?? null,
       unit("sensor.odometer", "km"),
       provider("odometer"),
       "sensor.odometer",
@@ -157,7 +201,7 @@ export function renderLiveData(card) {
     [t("live.location"), location, "", provider("lat", ""), "device_tracker.location"],
     [
       t("live.elevation"),
-      num(card._vs("sensor.elevation")),
+      val("sensor.elevation", "elevation")?.toFixed(0) ?? null,
       unit("sensor.elevation", "m"),
       provider("elevation", ""),
       "sensor.elevation",

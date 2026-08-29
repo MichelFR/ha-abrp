@@ -83,7 +83,8 @@
       "realtime_connected": { "name": "Echtzeit verbunden" }
     },
     "device_tracker": {
-      "location": { "name": "Standort" }
+      "location": { "name": "Standort" },
+      "destination": { "name": "Ziel" }
     },
     "image": {
       "car_image": { "name": "Fahrzeugbild" }

@@ -480,6 +480,9 @@ class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
         return {
             "connected": snapshot.is_connected,
             "providers": snapshot.providers or {},
+            # Per-field measurement times (unix seconds) so the card can
+            # apply ABRP's staleness rules at display time.
+            "timestamps": snapshot.field_timestamps or {},
             # Let the card reproduce ABRP's connection-status indicator without
             # depending on the (user-disableable) last-update/refresh sensors:
             # last_seen is the freshest telemetry time, soc_last_seen is when the

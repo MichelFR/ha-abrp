@@ -102,9 +102,11 @@ class Snapshot:
     charger_id: int | None = None
     # Where ABRP's data comes from: tlm_type is the overall source
     # (e.g. "enode", an OBD dongle, ...); providers maps each signal to its
-    # own source.
+    # own source, field_timestamps to its measurement time (unix seconds) —
+    # the card uses those to apply ABRP's per-field staleness at display time.
     tlm_source: str | None = None
     providers: dict[str, Any] | None = None
+    field_timestamps: dict[str, float] | None = None
     is_connected: bool | None = None
     is_asleep: bool | None = None
     cloud_connected: bool | None = None  # via a connected cloud provider (OTA)
@@ -306,8 +308,12 @@ _DAY = 86400
 _WEEK = 604800
 _MONTH = 2592000
 
-# Per-field staleness windows in seconds. A field older than its window is
-# blanked. Fields absent here never go stale on their own.
+# Per-field staleness windows in seconds, mirroring ABRP. The HA entities age
+# out only realtime/transient signals (_ENTITY_AGED_FIELDS below — a
+# minutes-old speed or power reading is meaningless, and a stale charging or
+# parked flag is a wrong state); slow-changing data (SoC, odometer,
+# temperatures, location, ...) keeps its last known value. The card applies
+# ABRP's full staleness map at display time via the per-field timestamps.
 _FIELD_TTL: dict[str, int] = {
     "soc": _DAY,
     "soe": _DAY,
@@ -332,6 +338,22 @@ _FIELD_TTL: dict[str, int] = {
     "heading": _WEEK,
     "elevation": _WEEK,
 }
+# The realtime signals aged out of the entity values themselves (soh is here
+# only for its ==0 validity rule; its month-long window never bites).
+# Everything else — SoC, SoE, range, odometer, capacity, temperatures,
+# location/heading/elevation, calibrations, and the charge-energy-added
+# session total — keeps its last known value.
+_ENTITY_AGED_FIELDS = (
+    "speed",
+    "power",
+    "hvac_power",
+    "voltage",
+    "current",
+    "is_parked",
+    "is_charging",
+    "is_dcfc",
+    "soh",
+)
 # Calibration values ABRP keeps "sticky": an update only replaces them if its
 # timestamp is strictly newer (never on a tie).
 _STICKY_FIELDS = frozenset(
@@ -432,11 +454,14 @@ def merge_tlm(
 
     # Apply staleness once everything is in place (so is_charging can see the
     # merged is_dcfc). Fields with no own timestamp fall back to the freshest
-    # so a just-polled value isn't wrongly aged out.
-    for key in list(merged):
-        _blank_if_stale(
-            merged, timestamps, providers, key, chosen_ts.get(key) or newest, now
-        )
+    # so a just-polled value isn't wrongly aged out. Only realtime signals age
+    # out of the entities; the rest keep their last known value (the card
+    # applies ABRP's full staleness at display time).
+    for key in _ENTITY_AGED_FIELDS:
+        if key in merged:
+            _blank_if_stale(
+                merged, timestamps, providers, key, chosen_ts.get(key) or newest, now
+            )
 
     merged["utc"] = newest or u_utc or s_utc
     merged["timestamps"] = timestamps
@@ -476,13 +501,11 @@ def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot
         datetime.fromtimestamp(soc_ts, tz=timezone.utc) if soc_ts > 0 else None
     )
 
-    # ABRP shows a speed only while its measurement is under 10 s old, and
-    # never a GPS-derived one; we surface the GPS (navigation) speed as its
-    # own value instead of dropping it.
+    # ABRP never displays a GPS-derived speed in its speed slot; we surface
+    # the GPS (navigation) speed as its own value instead of dropping it.
+    # Entities keep the last known reading; the card applies ABRP's
+    # 10-second display freshness itself.
     speed = _as_float(tlm.get("speed"))
-    speed_ts = _num0(timestamps.get("speed")) or _num0(tlm.get("utc"))
-    if time.time() - speed_ts >= 10:
-        speed = None
     speed_is_gps = providers.get("speed") == "gps"
 
     return Snapshot(
@@ -540,6 +563,7 @@ def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot
         else None,
         tlm_source=source,
         providers=providers or None,
+        field_timestamps=timestamps or None,
         is_connected=_as_bool(item.get("is_connected")),
         is_asleep=_as_bool(item.get("is_asleep")),
         cloud_connected=_as_bool(item.get("ota_is_connected")),

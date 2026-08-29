@@ -171,6 +171,9 @@
     "device_tracker": {
       "location": {
         "name": "Location"
+      },
+      "destination": {
+        "name": "Destination"
       }
     },
     "number": {
