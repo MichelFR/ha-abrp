@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.2.6
+
+The card's Live data view is now a faithful copy of ABRP's own live data
+screen — same tiles, same values, same rules — after comparing it item by
+item against the current ABRP web app.
+
+### Added
+
+- **Live data tiles for everything ABRP shows** that the card was missing:
+  Power (shown positive while charging, attributed like ABRP), HVAC power,
+  Voltage, Battery temperature, Degradation (100 − SoH), Remaining energy
+  (SoE), Inside/Outside temperature, and Firmware version. Tiles without a
+  value are hidden, exactly like in ABRP.
+- **Street address and speed limit while navigating.** The realtime stream's
+  `mapInfo` events (address, region, speed limit — or "no limit") are now
+  decoded; the Location tile shows the live street address like ABRP, and the
+  location tracker exposes `address`, `region`, and `speed_limit` attributes.
+- **New sensors:** "Calibrated maximum speed" (the value ABRP's live data
+  actually shows as Maximum speed) and "Firmware version".
+
+### Fixed
+
+- **Remaining energy (SoE) was 1000× too high.** ABRP's telemetry carries SoE
+  in Wh and converts at display; the sensor treated it as kWh.
+- **The Maximum speed tile showed the drive profile's configured limit**, not
+  ABRP's calibrated maximum speed. It now shows the calibrated value and only
+  falls back to the configured one.
+- **Reference consumption now needs a calibration confidence**, like in ABRP.
+- **SoC from the realtime stream is rounded** like ABRP rounds it, instead of
+  showing values like 80.60000000000001.
+- **The stream ignored `calibratedMaxSpeed` and `mapInfo` events** entirely.
+
 ## 1.2.5
 
 This release re-verifies our telemetry handling against the current ABRP web

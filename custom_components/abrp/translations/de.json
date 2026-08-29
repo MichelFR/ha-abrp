@@ -62,6 +62,8 @@
       "speed_factor": { "name": "Geschwindigkeitsfaktor" },
       "charger_id": { "name": "Ladesäulen-ID" },
       "max_speed": { "name": "Höchstgeschwindigkeit" },
+      "calibrated_max_speed": { "name": "Kalibrierte Maximalgeschwindigkeit" },
+      "firmware_version": { "name": "Firmware-Version" },
       "weight": { "name": "Gewicht" },
       "last_update": { "name": "Letzte Aktualisierung" },
       "data_source": { "name": "Datenquelle" },

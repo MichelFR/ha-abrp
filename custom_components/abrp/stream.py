@@ -261,6 +261,7 @@ _EVENT_FIELDS: dict[str, tuple[str, Callable[[dict[str, Any]], float | None]]] =
     "cabinSetPoint": ("cabin_set_point", lambda s: _sub_value(s, "c")),
     "cabinTemperature": ("cabin_temp", lambda s: _sub_value(s, "c")),
     "calibratedConfidence": ("calib_confidence", lambda s: _sub_value(s, "frac")),
+    "calibratedMaxSpeed": ("calib_max_speed", lambda s: _pos(_mul(_sub_value(s, "ms"), 3.6))),
     "calibratedRefCons": ("calib_ref_cons", lambda s: _pos(_sub_value(s, "wh_per_km"))),
     "chargingEnergyAdded": ("kwh_charged", lambda s: _div(_sub_value(s, "wh"), 1000)),
     "current": ("current", lambda s: _sub_value(s, "a")),
@@ -271,8 +272,9 @@ _EVENT_FIELDS: dict[str, tuple[str, Callable[[dict[str, Any]], float | None]]] =
     "hvacPower": ("hvac_power", lambda s: _div(_sub_value(s, "w"), 1000)),
     "odometer": ("odometer", lambda s: _div(_sub_value(s, "m"), 1000)),
     "power": ("power", lambda s: _div(_sub_value(s, "w"), 1000)),
-    "soc": ("soc", lambda s: _mul(_sub_value(s, "frac"), 100)),
-    "soe": ("soe", lambda s: _div(_sub_value(s, "wh"), 1000)),
+    "soc": ("soc", lambda s: _round_opt(_mul(_sub_value(s, "frac"), 100))),
+    # tlm keeps the state of energy in Wh (like the poll); converted at display.
+    "soe": ("soe", lambda s: _sub_value(s, "wh")),
     "soh": ("soh", lambda s: _mul(_sub_value(s, "frac"), 100)),
     "speed": ("speed", lambda s: _mul(_sub_value(s, "ms"), 3.6)),
     "speedFactor": ("speed_factor", lambda s: _pos(_sub_value(s, "frac"))),
@@ -293,6 +295,10 @@ def _pos(value: float | None) -> float | None:
     return value if value is not None and value > 0 else None
 
 
+def _round_opt(value: float | None) -> float | None:
+    return float(round(value)) if value is not None else None
+
+
 def _event_to_tlm(event: dict[str, Any], current: Tlm | None) -> Tlm:
     """Decode an SSE event into a partial tlm update the coordinator can merge.
 
@@ -307,6 +313,11 @@ def _event_to_tlm(event: dict[str, Any], current: Tlm | None) -> Tlm:
     timestamps: dict[str, float] = {}
     providers: dict[str, Any] = {}
     utc = 0.0
+    # Changes to the tlm ``location`` object (address/region/speed limit from
+    # mapInfo events, elevation from elevation events), merged onto the
+    # current one like the ABRP web app does.
+    location_update: dict[str, Any] = {}
+    location_ts = 0.0
 
     for ekey, sub in event.items():
         if not isinstance(sub, dict):
@@ -326,6 +337,21 @@ def _event_to_tlm(event: dict[str, Any], current: Tlm | None) -> Tlm:
                     timestamps[field] = ts
                     if provider is not None:
                         providers[field] = provider
+            continue
+
+        if ekey == "mapInfo":
+            address = sub.get("address")
+            if isinstance(address, str) and address:
+                location_update["name"] = address
+            region = sub.get("region")
+            if isinstance(region, str) and region:
+                location_update["region"] = region.replace("_", "").lower()
+            if sub.get("isFreeSpeedZone"):
+                location_update["speedlimit"] = "no_limit"
+            elif (limit_ms := _sub_value(sub, "speedLimitMs")) is not None:
+                location_update["speedlimit"] = limit_ms * 3.6
+            if location_update:
+                location_ts = max(location_ts, ts)
             continue
 
         if ekey == "chargingState":
@@ -365,6 +391,12 @@ def _event_to_tlm(event: dict[str, Any], current: Tlm | None) -> Tlm:
             timestamps[field] = ts
             if provider is not None:
                 providers[field] = provider
+
+    if location_update:
+        base_location = (current or {}).get("location")
+        base_location = base_location if isinstance(base_location, dict) else {}
+        values["location"] = {**base_location, **location_update}
+        timestamps["location"] = location_ts
 
     values["timestamps"] = timestamps
     values["providers"] = providers

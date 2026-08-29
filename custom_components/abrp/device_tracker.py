@@ -62,4 +62,9 @@ class AbrpMateDeviceTracker(AbrpMateEntity, TrackerEntity):
             "speed_kmh": speed,
             "country": snapshot.country3,
             "timezone": snapshot.timezone,
+            # Street address, region, and speed limit from ABRP's mapInfo
+            # (live while navigating in the app).
+            "address": snapshot.location_name,
+            "region": snapshot.location_region,
+            "speed_limit": snapshot.speed_limit,
         }

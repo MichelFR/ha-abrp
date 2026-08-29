@@ -82,6 +82,16 @@ class Snapshot:
     charging_energy_added_kwh: float | None = None
     soe_kwh: float | None = None  # state of energy: usable kWh left in the pack
     soh_percent: float | None = None  # state of health
+    # ABRP's calibrated maximum speed (its live-data "Maximum speed" value;
+    # distinct from the drive profile's configured max_speed).
+    calib_max_speed_kmh: float | None = None
+    fw_version: str | None = None  # vehicle firmware version, when reported
+    # From the tlm ``location`` object (fed by the app's mapInfo while
+    # navigating): street address, region, and the current speed limit
+    # (km/h, or the string "no_limit" in a zone without one).
+    location_name: str | None = None
+    location_region: str | None = None
+    speed_limit: float | str | None = None
     elevation_m: float | None = None
     cabin_set_point_c: float | None = None
     plugged_in: bool | None = None  # charge cable connected
@@ -243,6 +253,10 @@ def _first_float(*values: Any) -> float | None:
         if result is not None:
             return result
     return None
+
+
+def _div_opt(value: float | None, divisor: float) -> float | None:
+    return value / divisor if value is not None else None
 
 
 def _as_bool(value: Any) -> bool | None:
@@ -500,8 +514,19 @@ def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot
         charging_energy_added_kwh=_first_float(
             tlm.get("charge_energy_added"), tlm.get("kwh_charged")
         ),
-        soe_kwh=_as_float(tlm.get("soe")),
+        # tlm carries the state of energy in Wh (ABRP converts at display).
+        soe_kwh=_div_opt(_as_float(tlm.get("soe")), 1000),
         soh_percent=_as_float(tlm.get("soh")),
+        calib_max_speed_kmh=_as_float(tlm.get("calib_max_speed")),
+        fw_version=_as_str(tlm.get("fw_version")),
+        location_name=_as_str(location.get("name")),
+        location_region=_as_str(location.get("region")),
+        speed_limit=(
+            location.get("speedlimit")
+            if isinstance(location.get("speedlimit"), (int, float, str))
+            and not isinstance(location.get("speedlimit"), bool)
+            else None
+        ),
         elevation_m=_as_float(tlm.get("elevation")),
         cabin_set_point_c=_as_float(tlm.get("cabin_set_point")),
         plugged_in=_as_bool(tlm.get("is_charger_connected")),

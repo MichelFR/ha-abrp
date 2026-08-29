@@ -340,6 +340,23 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.max_speed_kmh,
     ),
+    # ABRP's calibrated maximum speed — the value its live-data view shows as
+    # "Maximum speed" (max_speed above is the drive profile's configured one).
+    AbrpSensorDescription(
+        key="calibrated_max_speed",
+        translation_key="calibrated_max_speed",
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        device_class=SensorDeviceClass.SPEED,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.calib_max_speed_kmh,
+    ),
+    AbrpSensorDescription(
+        key="firmware_version",
+        translation_key="firmware_version",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.fw_version,
+    ),
     AbrpSensorDescription(
         key="weight",
         translation_key="weight",

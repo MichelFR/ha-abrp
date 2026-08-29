@@ -114,6 +114,12 @@
       "max_speed": {
         "name": "Max speed"
       },
+      "calibrated_max_speed": {
+        "name": "Calibrated maximum speed"
+      },
+      "firmware_version": {
+        "name": "Firmware version"
+      },
       "weight": {
         "name": "Weight"
       },
