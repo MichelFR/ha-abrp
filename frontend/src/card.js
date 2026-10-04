@@ -3,12 +3,13 @@
 import { LitElement, html } from "lit";
 import { CARD_TYPE } from "./const.js";
 import { accountEntities, entityMap, vehicleDevices } from "./entities.js";
-import { isEntityId, isTemplate, num, relTime } from "./format.js";
+import { hoursSince, isEntityId, isTemplate, num, relTime } from "./format.js";
 import { localize } from "./localize.js";
 import { ensureHaComponents } from "./ha-components.js";
 import { cardStyles } from "./styles.js";
 import { renderLiveData } from "./views/live-data.js";
 import { renderOptionsDialog } from "./views/options-dialog.js";
+import { renderSpeedLimit } from "./views/speed-limit.js";
 
 export class AbrpVehicleCard extends LitElement {
   static styles = cardStyles;
@@ -197,7 +198,8 @@ export class AbrpVehicleCard extends LitElement {
 
   /* The connection-status indicator (dot colour + text), reproducing the
    * logic of the ABRP web app: green + pulse while telemetry is live (SoC seen
-   * within 5 min), otherwise a grey "last seen X ago" for up to 3 h, then
+   * within 5 min), otherwise a grey "last seen X ago" while under 4 h (ABRP's
+   * whole-hour "within 3 hours"), then
    * sleeping/offline. Evaluated on every render so it ticks over in real time,
    * exactly like the app. */
   _status() {
@@ -224,7 +226,7 @@ export class AbrpVehicleCard extends LitElement {
       return { color: "green", pulse: true, text: this._t("card.charging") };
     if (recentSoc)
       return { color: "green", pulse: true, text: this._t("card.connected") };
-    if (lastSeenTs != null && now - lastSeenTs <= 3 * 3600) {
+    if (lastSeenTs != null && hoursSince(lastSeenTs, now) <= 3) {
       const rel = relTime(lastSeenState, this.hass);
       return {
         color: "gray",
@@ -276,11 +278,27 @@ export class AbrpVehicleCard extends LitElement {
         : null;
 
     const show = (key) => this._config[key] !== false;
+    // The brand logo ABRP shows beside the model name (light/dark variant).
+    const brand = this._vs("sensor.brand");
+    const brandAttrs = brand?.attributes || {};
+    const logo = show("show_logo")
+      ? (this.hass.themes?.darkMode && brandAttrs.logo_dark) ||
+        brandAttrs.logo_light ||
+        brandAttrs.entity_picture
+      : null;
 
     return html`<div class="main">
       <div class="head">
         <div class="head-left">
-          <div class="name">${name}</div>
+          <div class="name">
+            ${logo
+              ? html`<img
+                  class="logo"
+                  src="${logo}"
+                  alt="${brand?.state || ""}"
+                />`
+              : ""}${name}
+          </div>
           ${show("show_profile") ? this._renderProfile() : ""}
         </div>
         ${show("show_image") && imageSrc
@@ -393,6 +411,7 @@ export class AbrpVehicleCard extends LitElement {
       <ha-icon icon="mdi:navigation-variant"></ha-icon>
       <span class="nav-dest">${attrs.destination || this._t("card.destination")}</span>
       ${parts.length ? html`<span class="nav-meta">${parts.join(" · ")}</span>` : ""}
+      ${this._config.show_speed_limit !== false ? renderSpeedLimit(this) : ""}
     </div>`;
   }
 

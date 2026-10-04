@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import timedelta
@@ -10,7 +11,9 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AbrpApi, AbrpApiError, Snapshot, Vehicle, build_snapshot, merge_tlm
@@ -19,12 +22,19 @@ from .const import (
     CONF_POLL_IDLE,
     CONF_POLL_STREAMING,
     DOMAIN,
+    MODEL_INFO_RETRY,
     POLL_INTERVAL_ACTIVE,
     POLL_INTERVAL_ACTIVE_STREAMING,
     POLL_INTERVAL_IDLE,
     SETTINGS_REFRESH_INTERVAL,
 )
-from .metadata import AbrpMetadata, async_get_metadata
+from .metadata import (
+    AbrpMetadata,
+    OemIcons,
+    async_get_metadata,
+    async_get_oem_icons,
+    resolve_oem_icon,
+)
 from .oauth import AbrpOAuth
 from .stream import AbrpLiveStream
 from .token_manager import TokenManager
@@ -91,6 +101,18 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         self._streams: dict[int, AbrpLiveStream] = {}
         # vehicle_id -> whether its realtime SSE stream is currently connected.
         self.stream_connected: dict[int, bool] = {}
+        # typecode -> ABRP's display info for the model (make, model, trim,
+        # years), plus when a failed lookup may be retried.
+        self.models: dict[str, dict[str, Any]] = {}
+        self._model_retry: dict[str, float] = {}
+        # Car-brand logo URLs scraped from the web app, fetched in the
+        # background and only on behalf of an enabled Brand sensor (the
+        # scrape reads ~8 MB of bundle); their arrival is signalled to those
+        # sensors alone.
+        self.oem_icons: OemIcons = {}
+        self._icons_task: asyncio.Task[None] | None = None
+        self._icons_checked: float = 0.0
+        self.brand_logos_signal = f"{DOMAIN}_{entry.entry_id}_brand_logos"
 
     async def _async_ensure_api(self) -> AbrpApi:
         """Discover ABRP metadata and build the API client (once)."""
@@ -108,6 +130,7 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
             raise UpdateFailed(str(err)) from err
 
         self.vehicles = {vehicle.vehicle_id: vehicle for vehicle in refresh.vehicles}
+        await self._async_update_models(api)
 
         # Re-fetch settings when their version bumps (changed on any device),
         # so external edits sync within one poll. A long interval is a safety
@@ -188,6 +211,93 @@ class AbrpMateCoordinator(DataUpdateCoordinator[dict[int, Snapshot]]):
         # (re)connected stream lets it relax again.
         self.update_interval = self._poll_interval(self.data or {})
         self.async_update_listeners()
+
+    async def _async_update_models(self, api: AbrpApi) -> None:
+        """Look up the display info of every vehicle model not seen yet."""
+        now = time.monotonic()
+        changed = False
+        for typecode in {v.car_model for v in self.vehicles.values() if v.car_model}:
+            if typecode in self.models or now < self._model_retry.get(typecode, 0):
+                continue
+            try:
+                self.models[typecode] = await api.get_model_display(typecode)
+                changed = True
+            except AbrpApiError as err:
+                _LOGGER.debug("%s", err)
+                self._model_retry[typecode] = now + MODEL_INFO_RETRY.total_seconds()
+        if changed:
+            self._update_device_models()
+
+    def model_info(self, vehicle_id: int) -> dict[str, Any] | None:
+        """ABRP's display info for a vehicle's model, once looked up."""
+        vehicle = self.vehicles.get(vehicle_id)
+        if vehicle is None or not vehicle.car_model:
+            return None
+        return self.models.get(vehicle.car_model)
+
+    def device_fields(self, vehicle_id: int) -> dict[str, str | None]:
+        """Manufacturer/model for the vehicle's device, from its model info.
+
+        e.g. "Tesla" / "Model 3 Long Range (2021)", with the raw typecode as
+        model id; "ABRP" / the typecode until the model has been looked up.
+        """
+        vehicle = self.vehicles.get(vehicle_id)
+        typecode = vehicle.car_model if vehicle else None
+        info = self.model_info(vehicle_id) or {}
+        name = " ".join(
+            part
+            for part in (info.get("model"), info.get("title"))
+            if isinstance(part, str)
+        )
+        years = info.get("years")
+        if name and isinstance(years, str) and years:
+            name = f"{name} ({years})"
+        manufacturer = info.get("manufacturer")
+        return {
+            "manufacturer": manufacturer if isinstance(manufacturer, str) else "ABRP",
+            "model": name or typecode or "Electric Vehicle",
+            "model_id": typecode,
+        }
+
+    def brand_logo(self, vehicle_id: int) -> dict[str, str] | None:
+        """The vehicle brand's light/dark logo URLs, as ABRP shows them."""
+        info = self.model_info(vehicle_id) or {}
+        return resolve_oem_icon(info.get("manufacturer"), self.oem_icons)
+
+    def _update_device_models(self) -> None:
+        """Push freshly looked-up model names onto existing vehicle devices."""
+        registry = dr.async_get(self.hass)
+        for vehicle_id in self.vehicles:
+            device = registry.async_get_device(identifiers={(DOMAIN, str(vehicle_id))})
+            if device is None:
+                continue  # not registered yet; its entities set device_info
+            fields = self.device_fields(vehicle_id)
+            if any(getattr(device, key) != value for key, value in fields.items()):
+                registry.async_update_device(device.id, **fields)
+
+    def ensure_brand_logos(self) -> None:
+        """Fetch the brand logos in the background (cached for a day).
+
+        Called on every update of a Brand sensor, so it re-checks the cache at
+        most every 10 minutes rather than per realtime event.
+        """
+        if not any(info.get("manufacturer") for info in self.models.values()):
+            return
+        now = time.monotonic()
+        if self._icons_task is not None and (
+            not self._icons_task.done() or now - self._icons_checked < 600
+        ):
+            return
+        self._icons_checked = now
+        self._icons_task = self.entry.async_create_background_task(
+            self.hass, self._async_refresh_oem_icons(), f"{DOMAIN} brand logos"
+        )
+
+    async def _async_refresh_oem_icons(self) -> None:
+        icons = await async_get_oem_icons(self._client)
+        if icons != self.oem_icons:
+            self.oem_icons = icons
+            async_dispatcher_send(self.hass, self.brand_logos_signal)
 
     def active_plan(self, vehicle_id: int) -> dict[str, Any] | None:
         """The account's active navigation plan, if it belongs to this vehicle.

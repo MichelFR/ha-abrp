@@ -30,8 +30,16 @@ export const cardStyles = css`
     position: relative;
   }
   .name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 1.5em;
     font-weight: 700;
+  }
+  .logo {
+    height: 1em;
+    width: auto;
+    flex: none;
   }
   .profile {
     color: var(--secondary-text-color);
@@ -202,6 +210,59 @@ export const cardStyles = css`
   .nav-meta {
     color: var(--secondary-text-color);
     white-space: nowrap;
+  }
+  /* Speed-limit signs, in ABRP's colours (dark-map variant under .dark). */
+  .sl-eu {
+    --sl-surface: #ffffff;
+    --sl-stroke: #fe0123;
+    flex: none;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 3.5px solid var(--sl-stroke);
+    background: var(--sl-surface);
+    color: #1d1d1d;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .sl-eu.wide {
+    font-size: 11px;
+  }
+  .sl-eu.dark,
+  .sl-us.dark {
+    --sl-surface: #f5f5f5;
+    --sl-stroke: #fe344f;
+  }
+  .sl-none {
+    flex: none;
+    display: inline-flex;
+  }
+  .sl-svg {
+    width: 32px;
+    height: 32px;
+  }
+  .sl-us {
+    --sl-surface: #ffffff;
+    flex: none;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2px 4px;
+    border: 2px solid #1d1d1d;
+    border-radius: 5px;
+    background: var(--sl-surface);
+    color: #1d1d1d;
+    font-size: 7px;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+  .sl-us-num {
+    font-size: 14px;
   }
   .dot {
     display: inline-block;
@@ -461,16 +522,35 @@ export const cardStyles = css`
     font-size: 0.8em;
     margin-top: 4px;
   }
-  .sources {
+  .conns {
     display: flex;
-    gap: 18px;
+    flex-wrap: wrap;
+    gap: 10px 24px;
     margin-top: 14px;
-    color: var(--secondary-text-color);
+    padding-top: 12px;
+    border-top: 1px solid var(--divider-color);
     font-size: 0.9em;
   }
-  .src-time {
-    opacity: 0.75;
-    margin-left: 4px;
+  .conn {
+    display: flex;
+    align-items: flex-start;
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin: -2px -6px;
+  }
+  .conn:hover {
+    background: var(--secondary-background-color);
+  }
+  .conn .dot {
+    margin-top: 6px;
+  }
+  .conn-text {
+    display: flex;
+    flex-direction: column;
+  }
+  .conn-sub {
+    color: var(--secondary-text-color);
+    font-size: 0.9em;
   }
   @media (max-width: 460px) {
     .grid {

@@ -28,6 +28,7 @@ const DEVICE_SCHEMA = [
 // Toggles: [config key, default, icon]. Labels come from translations
 // (toggle.<key> / short.<key>); only deviations from the default are stored.
 const TOGGLES = {
+  title: [["show_logo", true, "mdi:car-info"]],
   illustration: [["show_image", true, "mdi:image-outline"]],
   profile: [
     ["show_profile", true, "mdi:car-cog"],
@@ -38,6 +39,7 @@ const TOGGLES = {
     ["show_last_seen", true, "mdi:clock-outline"],
     ["show_live_data", true, "mdi:link-variant"],
     ["show_navigation", true, "mdi:navigation-variant"],
+    ["show_speed_limit", true, "mdi:speedometer"],
   ],
   buttons: [
     ["show_options", true, "mdi:tune-variant"],
@@ -54,7 +56,10 @@ const PAGE_SLOTS = {
     ["binary_sensor.charging", "mdi:battery-charging"],
     ["sensor.charging_power", "mdi:flash"],
   ],
-  status: [["sensor.last_update", "mdi:clock-outline"]],
+  status: [
+    ["sensor.last_update", "mdi:clock-outline"],
+    ["sensor.speed_limit", "mdi:speedometer"],
+  ],
   livedata: [
     ["sensor.soc", "mdi:battery-high"],
     ["sensor.range", "mdi:map-marker-distance"],
@@ -82,6 +87,7 @@ const PAGES = [
 ];
 
 const TITLE_SLOT = "sensor.vehicle_name";
+const LOGO_SLOT = ["sensor.brand", "mdi:car-info"];
 
 export class AbrpVehicleCardEditor extends LitElement {
   static get properties() {
@@ -198,7 +204,7 @@ export class AbrpVehicleCardEditor extends LitElement {
         this._renderToggle(key, def, icon)
       )}
       ${page.id === "title"
-        ? this._renderTitleSlot()
+        ? html`${this._renderTitleSlot()}${this._renderSlot(...LOGO_SLOT)}`
         : (PAGE_SLOTS[page.id] || []).map(([key, icon]) =>
             this._renderSlot(key, icon)
           )}`;

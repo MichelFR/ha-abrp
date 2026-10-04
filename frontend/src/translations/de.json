@@ -113,7 +113,9 @@
     "show_live_data": "Live-Daten-Link anzeigen",
     "show_options": "Optionen-Schaltfläche anzeigen",
     "show_live_data_button": "Live-Daten-Schaltfläche anzeigen",
-    "show_navigation": "Aktive Navigation anzeigen"
+    "show_navigation": "Aktive Navigation anzeigen",
+    "show_logo": "Markenlogo anzeigen",
+    "show_speed_limit": "Tempolimit-Schild beim Navigieren anzeigen"
   },
   "short": {
     "show_image": "Fahrzeugbild",
@@ -124,7 +126,9 @@
     "show_live_data": "Live-Daten-Link",
     "show_options": "Optionen",
     "show_live_data_button": "Live-Daten-Schaltfläche",
-    "show_navigation": "Navigation"
+    "show_navigation": "Navigation",
+    "show_logo": "Markenlogo",
+    "show_speed_limit": "Tempolimit"
   },
   "slot": {
     "image": {
@@ -152,7 +156,17 @@
       "elevation": "Höhe",
       "data_source": "Datenquelle",
       "source_last_refresh": "Cloud letzte Aktualisierung",
-      "obd_last_refresh": "OBD letzte Aktualisierung"
+      "obd_last_refresh": "OBD letzte Aktualisierung",
+      "speed_limit": "Tempolimit",
+      "brand": "Markenlogo"
     }
+  },
+  "connection": {
+    "connected": "Verbunden",
+    "ago": "Vor {time}",
+    "sleeping": "Schläft",
+    "notConnected": "Nicht verbunden",
+    "registering": "Anmeldung",
+    "unauthorized": "Nicht autorisiert"
   }
 }

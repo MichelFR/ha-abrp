@@ -16,6 +16,12 @@ export function relTime(iso, hass) {
   return localize(hass, "time.d_ago", { n: Math.round(secs / 86400) });
 }
 
+// Whole hours elapsed between two unix times, truncated like the moment
+// diff() ABRP uses — so its "within 3 hours" really means "less than 4".
+export function hoursSince(ts, now = Date.now() / 1000) {
+  return Math.floor((now - ts) / 3600);
+}
+
 // ABRP's compact age ("< 1 min", "5 min", "2 h", "3 days", ...) used in its
 // live data captions — a port of its formatDateTimeDelta. Takes unix seconds.
 const DELTA_STEPS = [

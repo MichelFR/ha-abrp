@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.4.0
+
+Brings over what ABRP 7.1.8 added to its interface that fits Home Assistant.
+
+### Added
+
+- **New Brand sensor**, e.g. "Tesla", pictured with the brand logo ABRP
+  shows since 7.1.8; `model`, `trim`, `years`, `typecode`, and the
+  `logo_light` / `logo_dark` URLs as attributes. The logo URLs are read from
+  the ABRP web app once a day in the background, only while the sensor is
+  enabled.
+- **Brand logo on the card.** Like ABRP's new vehicle picker, the card shows
+  the logo beside the vehicle name (light or dark variant to match the theme),
+  from the Brand sensor; toggle and slot under the card editor's Title page.
+- **Make and model on the device.** The vehicle device now reads e.g.
+  "Tesla" / "Model 3 Long Range (2021)" instead of "ABRP" and the raw ABRP
+  typecode (kept as the model id), from ABRP's vehicle-model endpoint.
+- **Connection status in Live data.** The footer now mirrors ABRP's
+  per-connection rows: the cloud provider with its full status (Connected,
+  "5 min ago", Sleeping, Not connected, Registering, Not authorized), the
+  paired OBD dongle, and any other source currently delivering data (e.g.
+  Android Auto). The data-source sensor exposes the inputs (`tlm_type`,
+  `cloud_source`, `cloud_connected`, `cloud_last_seen`, `tlm_authorized`,
+  `asleep`).
+- **Speed-limit sign while navigating.** The navigation row shows the current
+  road's limit the way ABRP draws it: a round European sign, the US
+  "SPEED LIMIT" banner in North America, or the derestriction sign where
+  there is no limit. Toggle under the editor's Status line page.
+
+### Fixed
+
+- **"Last seen" now lasts as long as in ABRP.** ABRP's "within 3 hours"
+  counts whole hours, so it keeps showing "last seen" until the data is 4
+  hours old; the card switched to sleeping/offline an hour early.
+
 ## 1.3.1
 
 Re-checked against ABRP web app 7.1.8 (build 6027). The telemetry, stream,

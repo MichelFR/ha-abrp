@@ -13,6 +13,8 @@ GET_SESSION_URL = "https://api.iternio.com/1/session/get_session"
 SET_SETTINGS_URL = "https://api.iternio.com/1/session/set_settings"
 SET_VEHICLE_DATA_URL = "https://api.iternio.com/1/vehicles/set_vehicle_data"
 TLM_EVENTS_URL = "https://api.iternio.com/2/tlm"
+# Public vehicle-model endpoints (keyed by typecode): renders and display names.
+VEHICLE_MODEL_URL = "https://api.iternio.com/2/vehicle-model/by-typecode"
 
 # get_session body needs these alongside the session id.
 ABRP_CLIENT = "abrp-web"
@@ -53,6 +55,17 @@ METADATA_TTL = timedelta(hours=6)
 # first few MB; this caps the download of the ~10 MB App chunk).
 METADATA_SCAN_LIMIT_BYTES = 8 * 1024 * 1024
 
+# The car-brand logos ABRP shows since 7.1.8 are content-hashed assets; their
+# paths sit deep in the web bundle (~8 MB in), so they get their own, rarer
+# scrape with a higher cap. A failed scrape is retried sooner than the TTL.
+OEM_ICONS_TTL = timedelta(hours=24)
+OEM_ICONS_RETRY = timedelta(hours=1)
+OEM_ICON_SCAN_LIMIT_BYTES = 32 * 1024 * 1024
+
+# A vehicle model's display info (make/model/trim) is static; a failed lookup
+# is retried after this long.
+MODEL_INFO_RETRY = timedelta(hours=1)
+
 
 def web_request_headers(api_key: str) -> dict[str, str]:
     """Headers shared by the ABRP JSON endpoints."""
@@ -66,6 +79,18 @@ def web_request_headers(api_key: str) -> dict[str, str]:
         "pragma": "no-cache",
         "referer": "https://abetterrouteplanner.com/",
         "user-agent": USER_AGENT,
+    }
+
+
+def open_api_headers(api_key: str, app_version: str) -> dict[str, str]:
+    """Headers for the public /2 (OpenAPI) endpoints, as the web app sends."""
+    return {
+        "accept": "application/json",
+        "origin": "https://abetterrouteplanner.com",
+        "referer": "https://abetterrouteplanner.com/",
+        "user-agent": USER_AGENT,
+        "x-abrp-version": app_version,
+        "x-api-key": api_key,
     }
 
 

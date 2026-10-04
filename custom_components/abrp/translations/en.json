@@ -146,6 +146,9 @@
       },
       "vehicle_name": {
         "name": "Vehicle name"
+      },
+      "brand": {
+        "name": "Brand"
       }
     },
     "binary_sensor": {

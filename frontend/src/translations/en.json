@@ -113,7 +113,9 @@
     "show_live_data": "Show Live data link",
     "show_options": "Show Options button",
     "show_live_data_button": "Show Live data button",
-    "show_navigation": "Show active navigation"
+    "show_navigation": "Show active navigation",
+    "show_logo": "Show brand logo",
+    "show_speed_limit": "Show speed limit sign while navigating"
   },
   "short": {
     "show_image": "Car image",
@@ -124,7 +126,9 @@
     "show_live_data": "Live data link",
     "show_options": "Options button",
     "show_live_data_button": "Live data button",
-    "show_navigation": "Navigation"
+    "show_navigation": "Navigation",
+    "show_logo": "Brand logo",
+    "show_speed_limit": "Speed limit"
   },
   "slot": {
     "image": {
@@ -152,7 +156,17 @@
       "elevation": "Elevation",
       "data_source": "Data source",
       "source_last_refresh": "Cloud last refresh",
-      "obd_last_refresh": "OBD last refresh"
+      "obd_last_refresh": "OBD last refresh",
+      "speed_limit": "Speed limit",
+      "brand": "Brand logo"
     }
+  },
+  "connection": {
+    "connected": "Connected",
+    "ago": "{time} ago",
+    "sleeping": "Sleeping",
+    "notConnected": "Not connected",
+    "registering": "Registering",
+    "unauthorized": "Not authorized"
   }
 }

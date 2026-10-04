@@ -1,10 +1,11 @@
 /* The "Live data" dialog: telemetry grid with per-signal providers, plus a
- * per-source freshness footer — mirroring the ABRP app's live data view
+ * per-connection status footer — mirroring the ABRP app's live data view
  * (same tiles, values, and rules; tiles without a value are hidden). */
 
 import { html } from "lit";
-import { deltaShort, num, providerName, relTime } from "../format.js";
+import { deltaShort, num, providerName } from "../format.js";
 import { localize } from "../localize.js";
+import { renderConnections } from "./connections.js";
 
 // ABRP's per-field staleness windows (seconds). The entities keep their last
 // known value; the card blanks stale fields at display time, like ABRP.
@@ -250,22 +251,6 @@ export function renderLiveData(card) {
     return [prov, age].filter(Boolean).join(" · ");
   };
 
-  const cloudName = providerName(card._vs("sensor.data_source")?.state);
-  const ok = (ts) => ts && ts !== "unknown" && ts !== "unavailable";
-  // The cloud provider and the OBD dongle can be the same source (e.g. both
-  // "OBD"); collapse same-named sources to a single dot, keeping the
-  // freshest timestamp so we never show one source twice.
-  const byName = new Map();
-  for (const [name, ts, key] of [
-    [cloudName, card._vs("sensor.source_last_refresh")?.state, "sensor.source_last_refresh"],
-    [providerName("obdble"), card._vs("sensor.obd_last_refresh")?.state, "sensor.obd_last_refresh"],
-  ]) {
-    if (!name || !ok(ts)) continue;
-    const prev = byName.get(name.toLowerCase());
-    if (!prev || new Date(ts) > new Date(prev[1])) byName.set(name.toLowerCase(), [name, ts, key]);
-  }
-  const sources = [...byName.values()];
-
   return html`<div class="grid">
       ${tiles.map(
         ([title, value, unitLabel, prov, key, field]) => {
@@ -283,17 +268,5 @@ export function renderLiveData(card) {
         }
       )}
     </div>
-    ${sources.length
-      ? html`<div class="sources">
-          ${sources.map(
-            ([name, ts, key]) => html`<span
-              class="seen clickable"
-              @click=${() => card._moreInfo(key)}
-            >
-              <span class="dot"></span>${name}
-              <span class="src-time">${relTime(ts, card.hass)}</span>
-            </span>`
-          )}
-        </div>`
-      : ""}`;
+    ${renderConnections(card)}`;
 }

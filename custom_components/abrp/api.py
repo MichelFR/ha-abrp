@@ -12,6 +12,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote
 
 import aiohttp
 
@@ -22,6 +23,8 @@ from .const import (
     GET_TLM_URL,
     SET_SETTINGS_URL,
     SET_VEHICLE_DATA_URL,
+    VEHICLE_MODEL_URL,
+    open_api_headers,
     web_request_headers,
 )
 from .metadata import AbrpMetadata
@@ -109,6 +112,8 @@ class Snapshot:
     field_timestamps: dict[str, float] | None = None
     is_connected: bool | None = None
     is_asleep: bool | None = None
+    tlm_type: str | None = None  # the vehicle's local/OBD source (e.g. "obdble")
+    tlm_authorized: bool | None = None  # False when the cloud link lost its grant
     cloud_connected: bool | None = None  # via a connected cloud provider (OTA)
     obd_connected: bool | None = None  # via a local OBD dongle
     cloud_source: str | None = None  # the cloud provider's name (e.g. "enode")
@@ -144,6 +149,26 @@ class AbrpApi:
     def __init__(self, session: aiohttp.ClientSession, metadata: AbrpMetadata) -> None:
         self._session = session
         self._metadata = metadata
+
+    async def get_model_display(self, typecode: str) -> dict[str, Any]:
+        """Return a vehicle model's display info (no session needed).
+
+        e.g. ``{"manufacturer": "Tesla", "model": "Model 3", "title":
+        "Long Range", "years": "2021", ...}``.
+        """
+        url = f"{VEHICLE_MODEL_URL}/{quote(typecode, safe='')}/display"
+        headers = open_api_headers(self._metadata.api_key, self._metadata.app_version)
+        try:
+            async with self._session.get(url, headers=headers) as response:
+                response.raise_for_status()
+                result = await response.json()
+        except (aiohttp.ClientError, ValueError) as err:
+            raise AbrpApiError(
+                f"ABRP model lookup for {typecode} failed: {err}"
+            ) from err
+        if not isinstance(result, dict):
+            raise AbrpApiError(f"ABRP model lookup for {typecode} returned {result!r}")
+        return result
 
     async def _post(
         self, url: str, body: dict[str, Any], headers: dict[str, str]
@@ -567,6 +592,8 @@ def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot
         field_timestamps=timestamps or None,
         is_connected=_as_bool(item.get("is_connected")),
         is_asleep=_as_bool(item.get("is_asleep")),
+        tlm_type=tlm_type,
+        tlm_authorized=_as_bool(item.get("tlm_authorized")),
         cloud_connected=_as_bool(item.get("ota_is_connected")),
         obd_connected=_as_bool(item.get("local_is_connected")),
         cloud_source=ota_type,

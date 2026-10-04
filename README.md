@@ -26,7 +26,9 @@ A Home Assistant custom integration for [A Better Route Planner](https://abetter
   fallback (fast while the car is active, slow while it's parked).
 - A bundled **ABRP Vehicle Card** styled after the ABRP app — installed and
   registered automatically with the integration (see below).
-- The vehicle's **car render** (model + paint) as an image entity.
+- The vehicle's **car render** (model + paint) as an image entity, and its
+  make and model as ABRP names them (e.g. *Tesla · Model 3 Long Range (2021)*)
+  on the device.
 - Connection diagnostics (per-source connected state and last refresh,
   realtime stream health, asleep) and the data source.
 - View **and edit** your route-planning preferences from Home Assistant.
@@ -71,12 +73,18 @@ just add **ABRP Vehicle Card** from the dashboard card picker (or
 `type: custom:abrp-vehicle-card` in YAML). Entities are auto-discovered; with
 several vehicles, pick one in the card's visual editor.
 
-- Car render, battery state, last-seen line and a switchable drive profile.
+- Car render with the brand logo beside the name (as in ABRP's vehicle
+  picker), battery state, last-seen line and a switchable drive profile.
+- While navigating: destination, distance and ETA, plus the current road's
+  speed-limit sign — round European style, or the US "SPEED LIMIT" banner in
+  North America.
 - **Options** opens all your ABRP planning settings: charge stops, destination
   SoC, avoid-on-route, realtime traffic/weather, charger stalls, extra weight
   and drive profile.
-- **Live data** opens the telemetry grid with the providing source per signal
-  (e.g. Enode, OBD, ABRP Estimate) and per-source freshness.
+- **Live data** opens the telemetry grid with the providing source and the
+  age of each reading (e.g. *Tesla · 5 min*), and the status of each
+  connection (Connected / last seen / Sleeping / Not connected / Not
+  authorized), like ABRP's live data screen.
 
 | Options | Live data |
 | --- | --- |
@@ -92,7 +100,7 @@ self-contained module shipped with the integration; to hack on it run
 
 | Type | Entities |
 | --- | --- |
-| Sensor | State of charge, State of energy, Battery health, Power, Charging power, HVAC power, Charging state, Driving state, Speed, GPS speed (the phone's speed while navigating), Road, Speed limit, Arrival time (ETA of the active plan), Heading, Odometer, Estimated range, Elevation, Voltage, Current, Charge energy added, External / Battery / Cabin / Vehicle temperature, Cabin set point, Battery capacity, Reference consumption, Calibration confidence, Speed factor, Charger ID, Max speed, Calibrated maximum speed, Firmware version, Weight, Last update, Data source, per-source last refresh (e.g. Enode / OBD) |
+| Sensor | State of charge, State of energy, Battery health, Power, Charging power, HVAC power, Charging state, Driving state, Speed, GPS speed (the phone's speed while navigating), Road, Speed limit, Arrival time (ETA of the active plan), Heading, Odometer, Estimated range, Elevation, Voltage, Current, Charge energy added, External / Battery / Cabin / Vehicle temperature, Cabin set point, Battery capacity, Reference consumption, Calibration confidence, Speed factor, Charger ID, Max speed, Calibrated maximum speed, Firmware version, Weight, Last update, Data source, per-source last refresh (e.g. Enode / OBD), Vehicle name, Brand (the make, pictured with its logo; model, trim and years as attributes) |
 | Binary sensor | Charging, Driving, Parked, DC fast charging, Plugged in, Asleep, Navigating, "{Source} connected" (e.g. Enode connected), OBD connected, Realtime connected |
 | Image | Car image (the ABRP render of your model and paint) |
 | Device tracker | GPS location (with heading, speed, address, speed limit, country, timezone attributes), Destination (the active navigation plan's final stop, with destination name, origin, distance, duration attributes) |
@@ -119,6 +127,10 @@ These are account-wide ABRP settings; changes made here sync to the ABRP app
   cadences can be tuned under the integration's **Configure** options.
 - **Settings:** read via `get_session`, written via `set_settings`, and kept in
   sync near-realtime by watching ABRP's settings version.
+- **Vehicle model and logo:** the make/model come from ABRP's public
+  vehicle-model endpoint; the brand logo URLs are read from the ABRP web app
+  once a day (only while the Brand sensor is enabled) and loaded straight
+  from ABRP.
 
 ## Notes
 
@@ -136,4 +148,6 @@ This is an unofficial, community-built project. It is **not affiliated with,
 endorsed by, or associated with** A Better Route Planner, Iternio, or Rivian in
 any way. "A Better Route Planner", "ABRP", "Iternio" and "Rivian" are
 trademarks of their respective owners and are used here only to describe what
-this integration interoperates with. Use at your own risk.
+this integration interoperates with. Car brand names and logos are trademarks
+of their manufacturers; the card shows the logos as served by ABRP and does
+not redistribute them. Use at your own risk.

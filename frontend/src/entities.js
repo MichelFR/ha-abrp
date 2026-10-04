@@ -32,6 +32,7 @@ export const KNOWN_KEYS = {
     "last_update",
     "data_source",
     "vehicle_name",
+    "brand",
     "source_last_refresh",
     "obd_last_refresh",
   ],

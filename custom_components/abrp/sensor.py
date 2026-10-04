@@ -27,7 +27,8 @@ from homeassistant.const import (
     UnitOfSpeed,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import AbrpMateConfigEntry
@@ -411,6 +412,7 @@ async def async_setup_entry(
         entities.append(AbrpMateLastUpdateSensor(coordinator, vehicle_id))
         entities.append(AbrpMateDataSourceSensor(coordinator, vehicle_id))
         entities.append(AbrpMateVehicleNameSensor(coordinator, vehicle_id))
+        entities.append(AbrpMateBrandSensor(coordinator, vehicle_id))
         entities.append(AbrpMateSpeedLimitSensor(coordinator, vehicle_id))
         entities.append(AbrpMateArrivalTimeSensor(coordinator, vehicle_id))
     async_add_entities(entities)
@@ -498,6 +500,14 @@ class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
             # SoC itself was measured.
             "last_seen": snapshot.recorded_at,
             "soc_last_seen": snapshot.soc_last_seen,
+            # Inputs to ABRP's per-connection status rows (Connected / Last
+            # seen / Sleeping / Not connected / Registering / Not authorized).
+            "tlm_type": snapshot.tlm_type,
+            "cloud_source": snapshot.cloud_source,
+            "cloud_connected": snapshot.cloud_connected,
+            "cloud_last_seen": snapshot.cloud_last_seen,
+            "tlm_authorized": snapshot.tlm_authorized,
+            "asleep": snapshot.is_asleep,
         }
 
 
@@ -575,3 +585,62 @@ class AbrpMateVehicleNameSensor(AbrpMateEntity, SensorEntity):
     def native_value(self) -> str | None:
         vehicle = self.vehicle
         return vehicle.name if vehicle else None
+
+
+class AbrpMateBrandSensor(AbrpMateEntity, SensorEntity):
+    """The vehicle's make, pictured with the brand logo ABRP shows (7.1.8+).
+
+    The model details ride along as attributes. The logo URLs come from a
+    once-a-day scrape of the ABRP web app that only runs while this sensor
+    is enabled; their arrival refreshes this sensor alone.
+    """
+
+    _attr_translation_key = "brand"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:car-info"
+    _unrecorded_attributes = frozenset({"logo_light", "logo_dark"})
+
+    def __init__(self, coordinator: AbrpMateCoordinator, vehicle_id: int) -> None:
+        super().__init__(coordinator, vehicle_id)
+        self._attr_unique_id = f"{vehicle_id}_brand"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                self.coordinator.brand_logos_signal,
+                self.async_write_ha_state,
+            )
+        )
+        self.coordinator.ensure_brand_logos()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self.coordinator.ensure_brand_logos()
+        super()._handle_coordinator_update()
+
+    @property
+    def native_value(self) -> str | None:
+        manufacturer = (self.coordinator.model_info(self._vehicle_id) or {}).get(
+            "manufacturer"
+        )
+        return manufacturer if isinstance(manufacturer, str) else None
+
+    @property
+    def entity_picture(self) -> str | None:
+        return (self.coordinator.brand_logo(self._vehicle_id) or {}).get("light")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        info = self.coordinator.model_info(self._vehicle_id) or {}
+        vehicle = self.vehicle
+        logo = self.coordinator.brand_logo(self._vehicle_id) or {}
+        return {
+            "model": info.get("model"),
+            "trim": info.get("title"),
+            "years": info.get("years"),
+            "typecode": vehicle.car_model if vehicle else None,
+            "logo_light": logo.get("light"),
+            "logo_dark": logo.get("dark"),
+        }

@@ -46,8 +46,7 @@ class AbrpMateEntity(CoordinatorEntity[AbrpMateCoordinator]):
         return DeviceInfo(
             identifiers={(DOMAIN, str(self._vehicle_id))},
             name=name,
-            manufacturer="ABRP",
-            model=(vehicle.car_model if vehicle else None) or "Electric Vehicle",
+            **self.coordinator.device_fields(self._vehicle_id),
         )
 
 

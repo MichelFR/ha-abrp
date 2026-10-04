@@ -16,10 +16,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import AbrpMateConfigEntry
+from .const import VEHICLE_MODEL_URL
 from .coordinator import AbrpMateCoordinator
 from .entity import AbrpMateEntity
 
-_IMAGE_URL_BASE = "https://api.iternio.com/2/vehicle-model/by-typecode"
 # The angled "hero" render that ABRP's own vehicle card uses.
 _IMAGE_SCENE = "HERO_LEFT"
 
@@ -66,7 +66,7 @@ class AbrpMateCarImage(AbrpMateEntity, ImageEntity):
             }
         )
         typecode = quote(vehicle.car_model, safe="")
-        return f"{_IMAGE_URL_BASE}/{typecode}/image/{_IMAGE_SCENE}?{params}"
+        return f"{VEHICLE_MODEL_URL}/{typecode}/image/{_IMAGE_SCENE}?{params}"
 
     @callback
     def _handle_coordinator_update(self) -> None:
