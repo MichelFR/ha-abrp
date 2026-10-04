@@ -44,13 +44,13 @@ USER_AGENT = (
 # These are extracted from the ABRP web bundle; the values below are the
 # last-known-good fallbacks used if scraping fails. Keep them current.
 FALLBACK_API_KEY = "f4128c06-5e39-4852-95f9-3286712a9f3a"
-FALLBACK_APP_VERSION = "7.1.7"
-FALLBACK_APP_BUILD_NUMBER = "5980"
+FALLBACK_APP_VERSION = "7.1.8"
+FALLBACK_APP_BUILD_NUMBER = "6027"
 
 # How long a scraped metadata result stays cached before it is refreshed.
 METADATA_TTL = timedelta(hours=6)
 # Stop scanning the web bundle after this many bytes (the values sit in the
-# first few MB; this caps the download of the ~20 MB bundle).
+# first few MB; this caps the download of the ~10 MB App chunk).
 METADATA_SCAN_LIMIT_BYTES = 8 * 1024 * 1024
 
 

@@ -17,7 +17,18 @@
     "just_now": "just now",
     "min_ago": "{n} min ago",
     "h_ago": "{n} h ago",
-    "d_ago": "{n} d ago"
+    "d_ago": "{n} d ago",
+    "lt_min": "< 1 min",
+    "min": "{n} min",
+    "h": "{n} h",
+    "day": "{n} day",
+    "days": "{n} days",
+    "week": "{n} week",
+    "weeks": "{n} weeks",
+    "month": "{n} month",
+    "months": "{n} months",
+    "year": "{n} year",
+    "years": "{n} years"
   },
   "confirm": {
     "title": "Switch drive profile?",
@@ -65,7 +76,7 @@
     "location": "Location",
     "elevation": "Elevation",
     "firmware": "Firmware version",
-    "estimate": "ABRP Estimate"
+    "estimate": "ABRP estimate"
   },
   "editor": {
     "vehicle": "Vehicle (empty = first ABRP vehicle)",

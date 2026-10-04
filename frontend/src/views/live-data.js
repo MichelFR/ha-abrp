@@ -3,7 +3,7 @@
  * (same tiles, values, and rules; tiles without a value are hidden). */
 
 import { html } from "lit";
-import { cap, num, relTime } from "../format.js";
+import { deltaShort, num, providerName, relTime } from "../format.js";
 import { localize } from "../localize.js";
 
 // ABRP's per-field staleness windows (seconds). The entities keep their last
@@ -49,8 +49,11 @@ export function renderLiveData(card) {
     if (ttl == null || !Number.isFinite(ts) || ts <= 0) return true;
     return now - ts <= ttl;
   };
-  const provider = (key, fallback = t("live.estimate")) =>
-    cap(providers[key]) || fallback;
+  // ABRP's provider label: "derived" reads as its estimate, a missing
+  // provider shows no label at all.
+  const label = (id) =>
+    id == null ? null : id === "derived" ? t("live.estimate") : providerName(id);
+  const provider = (key) => label(providers[key]);
   const unit = (key, fallback) =>
     card._vs(key)?.attributes?.unit_of_measurement ?? fallback;
   const val = (key, field) => {
@@ -86,7 +89,7 @@ export function renderLiveData(card) {
   // profile's configured value when no calibration exists.
   const calMax = num(card._vs("sensor.calibrated_max_speed"));
   const maxSpeed = calMax ?? num(card._vs("sensor.max_speed"));
-  const maxSpeedProv = calMax != null ? provider("calib_max_speed") : provider("max_speed");
+  const maxSpeedField = calMax != null ? "calib_max_speed" : "max_speed";
 
   // Location: the street address from ABRP's mapInfo (live while
   // navigating); the tracker zone as fallback. Stale like ABRP's map pin.
@@ -102,16 +105,18 @@ export function renderLiveData(card) {
   const socValue = val("sensor.soc", "soc");
   const hvac = val("sensor.hvac_power", "hvac_power");
 
-  // [title, value, unit, provider, entity key for more-info] — ABRP's live
-  // data items in its order; null/stale values drop the tile like ABRP does.
+  // [title, value, unit, provider, entity key for more-info, timestamp
+  // field] — ABRP's live data items in its order; null/stale values drop
+  // the tile like ABRP does.
   const tiles = [
-    [t("live.soc"), socValue == null ? null : socValue.toFixed(0), "%", provider("soc"), "sensor.soc"],
+    [t("live.soc"), socValue == null ? null : socValue.toFixed(0), "%", provider("soc"), "sensor.soc", "soc"],
     [
       t("live.power"),
       power == null ? null : fmt(power),
       "kW",
-      cap(powerProv) || t("live.estimate"),
+      label(powerProv),
       "sensor.power",
+      "power",
     ],
     [
       t("live.hvac_power"),
@@ -119,6 +124,7 @@ export function renderLiveData(card) {
       "kW",
       provider("hvac_power"),
       "sensor.hvac_power",
+      "hvac_power",
     ],
     [
       t("live.range"),
@@ -126,6 +132,7 @@ export function renderLiveData(card) {
       unit("sensor.range", "km"),
       provider("est_battery_range"),
       "sensor.range",
+      "est_battery_range",
     ],
     [
       t("live.voltage"),
@@ -133,6 +140,7 @@ export function renderLiveData(card) {
       "V",
       provider("voltage"),
       "sensor.voltage",
+      "voltage",
     ],
     [
       t("live.ref_consumption"),
@@ -140,6 +148,7 @@ export function renderLiveData(card) {
       unit("sensor.reference_consumption", "Wh/km"),
       provider("calib_ref_cons"),
       "sensor.reference_consumption",
+      "calib_ref_cons",
     ],
     [
       t("live.batt_temp"),
@@ -147,6 +156,7 @@ export function renderLiveData(card) {
       unit("sensor.battery_temp", "°C"),
       provider("batt_temp"),
       "sensor.battery_temp",
+      "batt_temp",
     ],
     [
       t("live.degradation"),
@@ -154,13 +164,15 @@ export function renderLiveData(card) {
       "%",
       provider("soh"),
       "sensor.soh",
+      "soh",
     ],
     [
       t("live.capacity"),
       val("sensor.battery_capacity", "capacity")?.toFixed(0) ?? null,
       "kWh",
-      provider("battery_capacity", provider("capacity")),
+      provider("battery_capacity") ?? provider("capacity"),
       "sensor.battery_capacity",
+      "capacity",
     ],
     [
       t("live.ref_speed"),
@@ -168,14 +180,23 @@ export function renderLiveData(card) {
       "%",
       provider("speed_factor"),
       "sensor.speed_factor",
+      "speed_factor",
     ],
-    [t("live.max_speed"), maxSpeed, unit("sensor.calibrated_max_speed", "km/h"), maxSpeedProv, "sensor.calibrated_max_speed"],
+    [
+      t("live.max_speed"),
+      maxSpeed,
+      unit("sensor.calibrated_max_speed", "km/h"),
+      provider(maxSpeedField),
+      "sensor.calibrated_max_speed",
+      maxSpeedField,
+    ],
     [
       t("live.soe"),
       val("sensor.soe", "soe")?.toFixed(1) ?? null,
       "kWh",
       provider("soe"),
       "sensor.soe",
+      "soe",
     ],
     [
       t("live.inside_temp"),
@@ -183,6 +204,7 @@ export function renderLiveData(card) {
       unit("sensor.cabin_temp", "°C"),
       provider("cabin_temp"),
       "sensor.cabin_temp",
+      "cabin_temp",
     ],
     [
       t("live.outside_temp"),
@@ -190,6 +212,7 @@ export function renderLiveData(card) {
       unit("sensor.external_temp", "°C"),
       provider("ext_temp"),
       "sensor.external_temp",
+      "ext_temp",
     ],
     [
       t("live.odometer"),
@@ -197,33 +220,45 @@ export function renderLiveData(card) {
       unit("sensor.odometer", "km"),
       provider("odometer"),
       "sensor.odometer",
+      "odometer",
     ],
-    [t("live.location"), location, "", provider("lat", ""), "device_tracker.location"],
+    [t("live.location"), location, "", null, "device_tracker.location", "lat"],
     [
       t("live.elevation"),
       val("sensor.elevation", "elevation")?.toFixed(0) ?? null,
       unit("sensor.elevation", "m"),
-      provider("elevation", ""),
+      null,
       "sensor.elevation",
+      "elevation",
     ],
     [
       t("live.firmware"),
       firmware && firmware !== "unknown" && firmware !== "unavailable" ? firmware : null,
       "",
-      "",
+      null,
       "sensor.firmware_version",
+      "fw_version",
     ],
   ].filter(([, value]) => value != null);
 
-  const cloudName = cap(card._vs("sensor.data_source")?.state);
+  // ABRP's tile caption: "<provider> · <age of the reading>". The stream
+  // stamps the position as "location", the poll as "lat".
+  const caption = (prov, field) => {
+    const ts =
+      field === "lat" ? timestamps.lat ?? timestamps.location : timestamps[field];
+    const age = Number(ts) > 0 ? deltaShort(ts, card.hass) : null;
+    return [prov, age].filter(Boolean).join(" · ");
+  };
+
+  const cloudName = providerName(card._vs("sensor.data_source")?.state);
   const ok = (ts) => ts && ts !== "unknown" && ts !== "unavailable";
   // The cloud provider and the OBD dongle can be the same source (e.g. both
-  // "Obdble"); collapse same-named sources to a single dot, keeping the
+  // "OBD"); collapse same-named sources to a single dot, keeping the
   // freshest timestamp so we never show one source twice.
   const byName = new Map();
   for (const [name, ts, key] of [
     [cloudName, card._vs("sensor.source_last_refresh")?.state, "sensor.source_last_refresh"],
-    ["Obdble", card._vs("sensor.obd_last_refresh")?.state, "sensor.obd_last_refresh"],
+    [providerName("obdble"), card._vs("sensor.obd_last_refresh")?.state, "sensor.obd_last_refresh"],
   ]) {
     if (!name || !ok(ts)) continue;
     const prev = byName.get(name.toLowerCase());
@@ -233,16 +268,19 @@ export function renderLiveData(card) {
 
   return html`<div class="grid">
       ${tiles.map(
-        ([title, value, unitLabel, prov, key]) => html`<div
-          class="tile clickable"
-          @click=${() => card._moreInfo(key)}
-        >
-          <div class="tile-title">${title}</div>
-          <div class="tile-value">
-            ${value}<span class="tile-unit"> ${unitLabel}</span>
-          </div>
-          ${prov ? html`<div class="tile-prov">${prov}</div>` : ""}
-        </div>`
+        ([title, value, unitLabel, prov, key, field]) => {
+          const sub = caption(prov, field);
+          return html`<div
+            class="tile clickable"
+            @click=${() => card._moreInfo(key)}
+          >
+            <div class="tile-title">${title}</div>
+            <div class="tile-value">
+              ${value}<span class="tile-unit"> ${unitLabel}</span>
+            </div>
+            ${sub ? html`<div class="tile-prov">${sub}</div>` : ""}
+          </div>`;
+        }
       )}
     </div>
     ${sources.length

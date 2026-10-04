@@ -17,7 +17,18 @@
     "just_now": "gerade eben",
     "min_ago": "vor {n} Min.",
     "h_ago": "vor {n} Std.",
-    "d_ago": "vor {n} Tagen"
+    "d_ago": "vor {n} Tagen",
+    "lt_min": "< 1 Min.",
+    "min": "{n} Min.",
+    "h": "{n} Std.",
+    "day": "{n} Tag",
+    "days": "{n} Tage",
+    "week": "{n} Woche",
+    "weeks": "{n} Wochen",
+    "month": "{n} Monat",
+    "months": "{n} Monate",
+    "year": "{n} Jahr",
+    "years": "{n} Jahre"
   },
   "confirm": {
     "title": "Fahrprofil wechseln?",

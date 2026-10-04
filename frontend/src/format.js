@@ -16,6 +16,46 @@ export function relTime(iso, hass) {
   return localize(hass, "time.d_ago", { n: Math.round(secs / 86400) });
 }
 
+// ABRP's compact age ("< 1 min", "5 min", "2 h", "3 days", ...) used in its
+// live data captions — a port of its formatDateTimeDelta. Takes unix seconds.
+const DELTA_STEPS = [
+  [3600, 60, "min", "min"],
+  [86400, 3600, "h", "h"],
+  [604800, 86400, "day", "days"],
+  [2630016, 604800, "week", "weeks"],
+  [31557600, 2630016, "month", "months"],
+  [Infinity, 31557600, "year", "years"],
+];
+
+export function deltaShort(ts, hass) {
+  const secs = Date.now() / 1000 - Number(ts);
+  if (!Number.isFinite(secs)) return null;
+  if (secs < 60) return localize(hass, "time.lt_min");
+  const [, unit, one, other] = DELTA_STEPS.find(([limit]) => secs < limit);
+  const n = Math.round(secs / unit);
+  return localize(hass, `time.${n === 1 ? one : other}`, { n });
+}
+
+// ABRP's display names for telemetry providers (its formatProviderName);
+// anything else is title-cased with underscores as spaces.
+const PROVIDER_NAMES = {
+  api: "API",
+  gps: "GPS",
+  obdble: "OBD",
+  abrpobd: "ABRP OBD",
+  carscanner: "Car Scanner",
+  highmobility: "High Mobility",
+  derived: "ABRP estimate",
+};
+
+export function providerName(id) {
+  if (!id) return id;
+  return (
+    PROVIDER_NAMES[id.toLowerCase()] ??
+    id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
 export function cap(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }

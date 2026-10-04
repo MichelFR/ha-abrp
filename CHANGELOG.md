@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.1
+
+Re-checked against ABRP web app 7.1.8 (build 6027). The telemetry, stream,
+session, and settings logic the integration mirrors is unchanged there; the
+live data screen gained freshness captions and proper provider names.
+
+### Changed
+
+- **Live data tiles show the age of each reading**, like ABRP 7.1.8: the
+  caption under a tile now reads "Tronity · 5 min" (provider · time since that
+  field was measured), using the per-field timestamps already exposed on the
+  data-source sensor. Location, elevation, and firmware show just the age.
+- **Provider names match ABRP** in the tile captions and the source footer
+  (e.g. "OBD", "ABRP OBD", "Car Scanner", "High Mobility", "API") instead of
+  a capitalized raw id. A tile whose field has no provider no longer falls
+  back to "ABRP estimate" — ABRP shows no provider there either.
+- **Updated fallback metadata** to the current live values (app version
+  7.1.8, build 6027; the API key is unchanged).
+
 ## 1.3.0
 
 ### Added
