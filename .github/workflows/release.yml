@@ -33,7 +33,19 @@ jobs:
             echo "Release $tag already exists; nothing to do."
             exit 0
           fi
+          # Release notes: this version's CHANGELOG.md section (from its
+          # "## <version>" heading to the next "## "), followed by GitHub's
+          # generated "Full Changelog" compare link.
+          version="${{ steps.version.outputs.version }}"
+          awk -v v="$version" '
+            /^## / { if (found) exit; if ($2 == v) { found = 1; next } }
+            found
+          ' CHANGELOG.md | sed -e '/./,$!d' > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::warning::No CHANGELOG.md section for $version"
+          fi
           gh release create "$tag" \
             --title "$tag" \
+            --notes-file release-notes.md \
             --generate-notes \
             --target "${{ github.sha }}"
