@@ -366,11 +366,16 @@ def _event_to_tlm(event: dict[str, Any], current: Tlm | None) -> Tlm:
                 dcfc = state == "CHARGING_DC"
                 values["is_charging"] = charging
                 values["is_dcfc"] = dcfc
+                # Plugged in unless the car reports NOT_CHARGING (ABRP 8.0.1
+                # derives it the same way, stamped on every event).
+                values["is_charger_connected"] = state != "NOT_CHARGING"
+                timestamps["is_charger_connected"] = ts
                 # ABRP only advances these timestamps while actually charging,
                 # so a finished charge ages out from when it last charged.
                 timestamps["is_charging"] = ts if charging else _num0(cur_ts.get("is_charging"))
                 timestamps["is_dcfc"] = ts if dcfc else _num0(cur_ts.get("is_dcfc"))
                 if provider is not None:
+                    providers["is_charger_connected"] = provider
                     if charging:
                         providers["is_charging"] = provider
                     if dcfc:

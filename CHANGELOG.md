@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.4.3
+
+Prepared for ABRP web app 8.0.1 (build 6112, currently on
+beta.abetterrouteplanner.com). Works with both 8.0.0 and 8.0.1.
+
+### Fixed
+
+- **Brand logos keep working on ABRP 8.0.1.** 8.0.1 renamed its logo files
+  (`tesla-light.<hash>.svg` became `tesla.<hash>.svg`), which the logo lookup
+  didn't recognise. Both names are now accepted. The old one can be dropped
+  once 8.0.1 is live; see `docs/abrp-8.0.1-compat.md`. 8.0.1 also adds logos
+  for Aiqar, Bentley, iCaur, and Jaecoo.
+
+### Changed
+
+- **Plugged in updates live.** Like ABRP 8.0.1, the live stream's charging
+  state now also sets Plugged in (on unless the car reports "not charging"),
+  instead of waiting for the next telemetry poll.
+
 ## 1.4.2
 
 ### Added

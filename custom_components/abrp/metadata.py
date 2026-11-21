@@ -44,9 +44,14 @@ _BUNDLE_RE = re.compile(r'src="(/_expo/static/js/[^"]+\.js)"')
 _CHUNK_RE = re.compile(r"/_expo/static/js/[\w./-]+\.js")
 _API_KEY_RE = re.compile(r"API_KEY:'([0-9a-fA-F-]{16,})'")
 _VERSION_RE = re.compile(r'version:"(\d+\.\d+\.\d+)",buildNumber:"(\d+)"')
-# e.g. "/assets/assets/oem-icons/light/tata-motors-light.<hash>.svg"
+# Brand logo asset paths, in both of ABRP's naming schemes:
+#   ABRP <= 8.0.0: "/assets/assets/oem-icons/light/tata-motors-light.<hash>.svg"
+#   ABRP >= 8.0.1: "/assets/assets/oem-icons/light/tata-motors.<hash>.svg"
+# The optional "-light"/"-dark" suffix only exists for the old scheme; drop it
+# once 8.0.1 is live on abetterrouteplanner.com (docs/abrp-8.0.1-compat.md).
 _OEM_ICON_RE = re.compile(
-    r'"(/assets/assets/oem-icons/(light|dark)/([a-z0-9-]+)-(?:light|dark)'
+    r'"(/assets/assets/oem-icons/(light|dark)/([a-z0-9-]+?)'
+    r"(?:-(?:light|dark))?"  # ABRP <= 8.0.0 only
     r'\.[0-9a-f]+\.svg)"'
 )
 
