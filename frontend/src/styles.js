@@ -517,6 +517,26 @@ export const cardStyles = css`
     font-size: 0.7em;
     font-weight: 500;
   }
+  /* A value past ABRP's staleness window, shown anyway (show_stale_data). */
+  .stale {
+    opacity: 0.6;
+  }
+  .stale-pill {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 16px;
+    vertical-align: middle;
+    color: var(--warning-color, #ffa600);
+    background: rgba(255, 166, 0, 0.15);
+    border: 1px solid rgba(255, 166, 0, 0.4);
+  }
+  .tile-value .stale-pill {
+    font-size: 10px;
+  }
   .tile-prov {
     color: var(--secondary-text-color);
     font-size: 0.8em;

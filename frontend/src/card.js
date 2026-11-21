@@ -280,14 +280,15 @@ export class AbrpVehicleCard extends LitElement {
       vehicle.device?.name ||
       this._t("card.vehicle");
     const socState = this._vs("sensor.soc");
-    // Like ABRP, the headline SoC blanks once the reading is over a day old
-    // (the entity itself keeps the last known value).
+    // ABRP blanks the headline SoC once the reading is over a day old; with
+    // show_stale_data (default on) it stays, marked with a "Stale" pill.
     const socTs = Number(
       this._vs("sensor.data_source")?.attributes?.timestamps?.soc
     );
     const socStale =
       Number.isFinite(socTs) && socTs > 0 && Date.now() / 1000 - socTs > 86400;
-    const soc = socStale ? null : num(socState);
+    const showStale = this._config.show_stale_data !== false;
+    const soc = socStale && !showStale ? null : num(socState);
     const image = this._vs("image.car_image");
     const imageSrc =
       image?.attributes?.entity_picture ||
@@ -343,7 +344,10 @@ export class AbrpVehicleCard extends LitElement {
               .stateObj=${socState}
             ></ha-state-icon>`
           : html`<ha-icon icon="mdi:battery"></ha-icon>`}
-        <span class="soc">${soc ?? "–"}%</span>
+        <span class="soc ${socStale ? "stale" : ""}">${soc ?? "–"}%</span>
+        ${socStale && soc != null
+          ? html`<span class="stale-pill">${this._t("card.stale")}</span>`
+          : ""}
         ${show("show_charge_speed") && chargeSpeed
           ? html`<span
               class="charge-speed clickable"

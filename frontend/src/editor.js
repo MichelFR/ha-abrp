@@ -45,6 +45,7 @@ const TOGGLES = {
     ["show_options", true, "mdi:tune-variant"],
     ["show_live_data_button", false, "mdi:chart-box-outline"],
   ],
+  livedata: [["show_stale_data", true, "mdi:history"]],
 };
 
 // Entity slots per subpage: [slot key, icon]; labels from slot.<key>.

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.2
+
+### Added
+
+- **The card keeps showing stale data.** ABRP hides a value once it's past
+  its freshness limit (5 min for power, 1 h for temperatures, a day for SoC
+  and range, ...). The card now keeps showing the last known value instead,
+  dimmed and marked with a "Stale" pill, on the headline SoC and on every
+  Live data tile. Turn off **Show stale data** on the card editor's Live
+  data page (`show_stale_data: false`) to hide stale values like ABRP.
+
 ## 1.4.1
 
 Re-checked against ABRP web app 8.0.0 (build 6110). Most of 8.0.0 is a new

@@ -43,8 +43,11 @@ export function renderLiveData(card) {
   const providers = dsAttrs.providers || {};
   const timestamps = dsAttrs.timestamps || {};
   const now = Date.now() / 1000;
-  // A field is shown only while inside its ABRP staleness window (fields
-  // without a window, or without a timestamp, never go stale here).
+  // A field is fresh while inside its ABRP staleness window (fields without
+  // a window, or without a timestamp, never go stale here). ABRP hides stale
+  // fields; with the card's show_stale_data option (default on) they stay
+  // visible, marked with a "Stale" pill.
+  const showStale = card._config?.show_stale_data !== false;
   const fresh = (field) => {
     if (!field) return true;
     const ttl = FIELD_TTL[field];
@@ -60,7 +63,7 @@ export function renderLiveData(card) {
   const unit = (key, fallback) =>
     card._vs(key)?.attributes?.unit_of_measurement ?? fallback;
   const val = (key, field) => {
-    if (field && !fresh(field)) return null;
+    if (field && !showStale && !fresh(field)) return null;
     const v = Number(card._vs(key)?.state);
     return Number.isFinite(v) ? v : null;
   };
@@ -83,13 +86,17 @@ export function renderLiveData(card) {
 
   // Battery temperature: like ABRP 8.0.0, the range across the min, max and
   // overall readings ("18–24"), credited to the newest of them.
-  const battTemps = [
+  let battTemps = [
     ["sensor.battery_temp_min", "batt_temp_min"],
     ["sensor.battery_temp_max", "batt_temp_max"],
     ["sensor.battery_temp", "batt_temp"],
   ]
     .map(([key, field]) => ({ key, field, value: val(key, field) }))
     .filter((r) => r.value != null);
+  // Prefer the fresh readings; stale ones only when nothing fresh is left.
+  if (battTemps.some((r) => fresh(r.field))) {
+    battTemps = battTemps.filter((r) => fresh(r.field));
+  }
   let battTemp = null;
   let battNewest = null;
   if (battTemps.length) {
@@ -128,7 +135,7 @@ export function renderLiveData(card) {
   // navigating); the tracker zone as fallback. Stale like ABRP's map pin.
   const tracker = card._vs("device_tracker.location");
   const address = tracker?.attributes?.address;
-  const location = !fresh("lat")
+  const location = !showStale && !fresh("lat")
     ? null
     : address ||
       (tracker?.state && tracker.state !== "unknown" ? tracker.state : null);
@@ -287,13 +294,16 @@ export function renderLiveData(card) {
       ${tiles.map(
         ([title, value, unitLabel, prov, key, field]) => {
           const sub = caption(prov, field);
+          const stale = field != null && !fresh(field);
           return html`<div
             class="tile clickable"
             @click=${() => card._moreInfo(key)}
           >
             <div class="tile-title">${title}</div>
             <div class="tile-value">
-              ${value}<span class="tile-unit"> ${unitLabel}</span>
+              <span class=${stale ? "stale" : ""}
+                >${value}<span class="tile-unit"> ${unitLabel}</span></span
+              >${stale ? html`<span class="stale-pill">${t("card.stale")}</span>` : ""}
             </div>
             ${sub ? html`<div class="tile-prov">${sub}</div>` : ""}
           </div>`;

@@ -12,7 +12,8 @@
     "offline": "Offline",
     "eta": "ETA {time}",
     "destination": "Destination",
-    "tlm_issues": "Connection issues"
+    "tlm_issues": "Connection issues",
+    "stale": "Stale"
   },
   "time": {
     "just_now": "just now",
@@ -116,7 +117,8 @@
     "show_live_data_button": "Show Live data button",
     "show_navigation": "Show active navigation",
     "show_logo": "Show brand logo",
-    "show_speed_limit": "Show speed limit sign while navigating"
+    "show_speed_limit": "Show speed limit sign while navigating",
+    "show_stale_data": "Show stale data (marked Stale)"
   },
   "short": {
     "show_image": "Car image",
@@ -129,7 +131,8 @@
     "show_live_data_button": "Live data button",
     "show_navigation": "Navigation",
     "show_logo": "Brand logo",
-    "show_speed_limit": "Speed limit"
+    "show_speed_limit": "Speed limit",
+    "show_stale_data": "Stale data"
   },
   "slot": {
     "image": {

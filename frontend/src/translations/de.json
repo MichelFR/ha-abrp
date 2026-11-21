@@ -12,7 +12,8 @@
     "offline": "Offline",
     "eta": "Ankunft {time}",
     "destination": "Ziel",
-    "tlm_issues": "Verbindungsprobleme"
+    "tlm_issues": "Verbindungsprobleme",
+    "stale": "Veraltet"
   },
   "time": {
     "just_now": "gerade eben",
@@ -116,7 +117,8 @@
     "show_live_data_button": "Live-Daten-Schaltfläche anzeigen",
     "show_navigation": "Aktive Navigation anzeigen",
     "show_logo": "Markenlogo anzeigen",
-    "show_speed_limit": "Tempolimit-Schild beim Navigieren anzeigen"
+    "show_speed_limit": "Tempolimit-Schild beim Navigieren anzeigen",
+    "show_stale_data": "Veraltete Daten anzeigen (als veraltet markiert)"
   },
   "short": {
     "show_image": "Fahrzeugbild",
@@ -129,7 +131,8 @@
     "show_live_data_button": "Live-Daten-Schaltfläche",
     "show_navigation": "Navigation",
     "show_logo": "Markenlogo",
-    "show_speed_limit": "Tempolimit"
+    "show_speed_limit": "Tempolimit",
+    "show_stale_data": "Veraltete Daten"
   },
   "slot": {
     "image": {
