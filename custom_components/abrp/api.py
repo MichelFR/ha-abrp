@@ -78,6 +78,10 @@ class Snapshot:
     ext_temp_c: float | None = None
     cabin_temp_c: float | None = None
     batt_temp_c: float | None = None
+    # Coldest/warmest cell or module temperature, when the source reports
+    # them (ABRP 8.0.0 shows the pack temperature as this min–max range).
+    batt_temp_min_c: float | None = None
+    batt_temp_max_c: float | None = None
     vehicle_temp_c: float | None = None
     battery_capacity_kwh: float | None = None
     estimated_range_km: float | None = None
@@ -115,6 +119,9 @@ class Snapshot:
     tlm_type: str | None = None  # the vehicle's local/OBD source (e.g. "obdble")
     tlm_authorized: bool | None = None  # False when the cloud link lost its grant
     cloud_connected: bool | None = None  # via a connected cloud provider (OTA)
+    # ABRP has open telemetry interventions for the vehicle (its red
+    # "Connection issues" status); None when get_tlm doesn't say.
+    tlm_issues: bool | None = None
     obd_connected: bool | None = None  # via a local OBD dongle
     cloud_source: str | None = None  # the cloud provider's name (e.g. "enode")
     cloud_last_seen: datetime | None = None  # last telemetry via the cloud provider
@@ -357,6 +364,8 @@ _FIELD_TTL: dict[str, int] = {
     "est_battery_range": _DAY,
     "ext_temp": _HOUR,
     "batt_temp": _HOUR,
+    "batt_temp_min": _HOUR,
+    "batt_temp_max": _HOUR,
     "cabin_temp": _HOUR,
     "lat": _WEEK,
     "lon": _WEEK,
@@ -553,6 +562,8 @@ def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot
         ext_temp_c=_as_float(tlm.get("ext_temp")),
         cabin_temp_c=_as_float(tlm.get("cabin_temp")),
         batt_temp_c=_as_float(tlm.get("batt_temp")),
+        batt_temp_min_c=_as_float(tlm.get("batt_temp_min")),
+        batt_temp_max_c=_as_float(tlm.get("batt_temp_max")),
         vehicle_temp_c=_as_float(tlm.get("vehicle_temp")),
         speed_kmh=speed if not speed_is_gps else None,
         gps_speed_kmh=speed if speed_is_gps else None,
@@ -595,6 +606,11 @@ def build_snapshot(item: dict[str, Any], tlm: dict[str, Any] | None) -> Snapshot
         tlm_type=tlm_type,
         tlm_authorized=_as_bool(item.get("tlm_authorized")),
         cloud_connected=_as_bool(item.get("ota_is_connected")),
+        tlm_issues=(
+            bool(item["tlm_intervention_ids"])
+            if isinstance(item.get("tlm_intervention_ids"), list)
+            else None
+        ),
         obd_connected=_as_bool(item.get("local_is_connected")),
         cloud_source=ota_type,
         cloud_last_seen=_optional_unix_seconds(item.get("ota_tlm_time")),

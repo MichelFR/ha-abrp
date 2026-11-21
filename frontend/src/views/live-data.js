@@ -28,6 +28,8 @@ const FIELD_TTL = {
   est_battery_range: DAY,
   ext_temp: HOUR,
   batt_temp: HOUR,
+  batt_temp_min: HOUR,
+  batt_temp_max: HOUR,
   cabin_temp: HOUR,
   lat: WEEK,
   lon: WEEK,
@@ -78,6 +80,36 @@ export function renderLiveData(card) {
   // Degradation = 100 - SoH, exactly what ABRP's live data shows.
   const soh = val("sensor.soh", "soh");
   const degradation = soh == null ? null : 100 - soh;
+
+  // Battery temperature: like ABRP 8.0.0, the range across the min, max and
+  // overall readings ("18–24"), credited to the newest of them.
+  const battTemps = [
+    ["sensor.battery_temp_min", "batt_temp_min"],
+    ["sensor.battery_temp_max", "batt_temp_max"],
+    ["sensor.battery_temp", "batt_temp"],
+  ]
+    .map(([key, field]) => ({ key, field, value: val(key, field) }))
+    .filter((r) => r.value != null);
+  let battTemp = null;
+  let battNewest = null;
+  if (battTemps.length) {
+    // Rounded like ABRP's formatNumber (no "-0").
+    const round = (v) => (Math.abs(v) < 0.5 ? 0 : Math.round(v)).toString();
+    const values = battTemps.map((r) => r.value);
+    const lo = round(Math.min(...values));
+    const hi = round(Math.max(...values));
+    const sep = lo.startsWith("-") || hi.startsWith("-") ? "\u2009\u2013\u2009" : "\u2013";
+    battTemp = lo === hi ? lo : `${lo}${sep}${hi}`;
+    battNewest = battTemps.reduce((a, b) =>
+      (Number(timestamps[b.field]) || -Infinity) >
+      (Number(timestamps[a.field]) || -Infinity)
+        ? b
+        : a
+    );
+  }
+  const battProvider =
+    (battNewest && providers[battNewest.field]) ??
+    battTemps.map((r) => providers[r.field]).find((p) => p != null);
 
   // ABRP shows the calibrated reference consumption only alongside a
   // calibration confidence.
@@ -153,11 +185,11 @@ export function renderLiveData(card) {
     ],
     [
       t("live.batt_temp"),
-      val("sensor.battery_temp", "batt_temp")?.toFixed(0) ?? null,
-      unit("sensor.battery_temp", "°C"),
-      provider("batt_temp"),
-      "sensor.battery_temp",
-      "batt_temp",
+      battTemp,
+      unit(battNewest?.key ?? "sensor.battery_temp", "°C"),
+      label(battProvider),
+      battNewest?.key ?? "sensor.battery_temp",
+      battNewest?.field ?? "batt_temp",
     ],
     [
       t("live.degradation"),

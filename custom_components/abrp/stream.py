@@ -251,6 +251,9 @@ _PROVIDER_MAP = {
     "TRONITY_POLL": "tronity",
     "DERIVED": "derived",
     "CARSCANNER": "carscanner",
+    "ABRP_OTA": "abrp-ota",
+    "BYD_TRACKER": "byd-tracker",
+    "HOME_ASSISTANT": "home-assistant",
 }
 
 # event sub-object -> (tlm field, converter from the sub-object to a value in
@@ -258,6 +261,8 @@ _PROVIDER_MAP = {
 _EVENT_FIELDS: dict[str, tuple[str, Callable[[dict[str, Any]], float | None]]] = {
     "batteryCapacity": ("capacity", lambda s: _div(_sub_value(s, "wh"), 1000)),
     "batteryTemperature": ("batt_temp", lambda s: _sub_value(s, "c")),
+    "batteryTemperatureMax": ("batt_temp_max", lambda s: _sub_value(s, "c")),
+    "batteryTemperatureMin": ("batt_temp_min", lambda s: _sub_value(s, "c")),
     "cabinSetPoint": ("cabin_set_point", lambda s: _sub_value(s, "c")),
     "cabinTemperature": ("cabin_temp", lambda s: _sub_value(s, "c")),
     "calibratedConfidence": ("calib_confidence", lambda s: _sub_value(s, "frac")),

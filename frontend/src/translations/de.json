@@ -11,7 +11,8 @@
     "sleeping": "Schläft",
     "offline": "Offline",
     "eta": "Ankunft {time}",
-    "destination": "Ziel"
+    "destination": "Ziel",
+    "tlm_issues": "Verbindungsprobleme"
   },
   "time": {
     "just_now": "gerade eben",

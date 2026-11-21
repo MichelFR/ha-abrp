@@ -18,6 +18,8 @@ export const KNOWN_KEYS = {
     "hvac_power",
     "power",
     "voltage",
+    "battery_temp_min",
+    "battery_temp_max",
     "battery_temp",
     "cabin_temp",
     "external_temp",

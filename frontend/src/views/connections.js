@@ -8,10 +8,10 @@ import { localize } from "../localize.js";
 
 // ABRP's recentTelemetryTimeSpan: a source counts as connected while its
 // newest reading is younger than this (seconds).
-const RECENT = 300;
-const OBD = new Set(["obdble", "abrpobd"]);
+export const RECENT = 300;
+export const OBD = new Set(["obdble", "abrpobd"]);
 
-function toUnix(value) {
+export function toUnix(value) {
   if (value == null || value === "") return null;
   const n = Number(value);
   if (Number.isFinite(n)) return n > 0 ? n : null;
@@ -24,7 +24,7 @@ const daysSince = (ts, now) => Math.floor((now - ts) / 86400);
 
 /* Each provider's newest field timestamp, newest first
  * (ABRP's getRecentTelemetryProviders). */
-function recentProviders(providers, timestamps) {
+export function recentProviders(providers, timestamps) {
   const newest = {};
   for (const [field, provider] of Object.entries(providers || {})) {
     if (provider == null) continue;
@@ -54,6 +54,37 @@ function otaStatus({ type, authorized, connected, time, asleep, now }) {
   return null;
 }
 
+/* The cloud provider ABRP reports on: the OTA source, falling back to "api"
+ * while the API pushes data (ABRP's selectOtaTlmWithFallback). */
+export function cloudProvider(attrs) {
+  const providers = attrs.providers || {};
+  return (
+    attrs.cloud_source ??
+    (Object.values(providers).includes("api") ? "api" : null)
+  );
+}
+
+/* The cloud status ABRP 8.0.0's useVehicleStatus derives for the status
+ * pill: like getOtaConnectionStatus, minus its "last seen" step. */
+export function pillCloudStatus(attrs, recent, now) {
+  const type = cloudProvider(attrs);
+  if (type == null) return null;
+  const connected = attrs.cloud_connected;
+  const time =
+    recent.find((p) => p.provider === type)?.timestamp ??
+    toUnix(attrs.cloud_last_seen);
+  if (attrs.tlm_authorized === false && type !== "api") return "unauthorized";
+  if (connected) return "connected";
+  if (attrs.asleep) return "sleeping";
+  if (connected === false && time) {
+    return type === "api" && daysSince(time, now) <= 3
+      ? "sleeping"
+      : "notConnected";
+  }
+  if (connected !== false || time) return null;
+  return "registering";
+}
+
 export function renderConnections(card) {
   const t = (key, vars) => localize(card.hass, key, vars);
   const attrs = card._vs("sensor.data_source")?.attributes || {};
@@ -67,9 +98,7 @@ export function renderConnections(card) {
   const rows = [];
 
   // The cloud provider; ABRP falls back to "api" while the API pushes data.
-  const ota =
-    attrs.cloud_source ??
-    (Object.values(providers).includes("api") ? "api" : null);
+  const ota = cloudProvider(attrs);
   const status = otaStatus({
     type: ota,
     authorized: attrs.tlm_authorized,

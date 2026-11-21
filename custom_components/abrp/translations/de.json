@@ -93,6 +93,12 @@
       "battery_temp": {
         "name": "Batterietemperatur"
       },
+      "battery_temp_min": {
+        "name": "Batterietemperatur min."
+      },
+      "battery_temp_max": {
+        "name": "Batterietemperatur max."
+      },
       "cabin_temp": {
         "name": "Innenraumtemperatur"
       },

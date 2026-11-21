@@ -49,7 +49,10 @@ const PROVIDER_NAMES = {
   gps: "GPS",
   obdble: "OBD",
   abrpobd: "ABRP OBD",
+  "abrp-ota": "ABRP OTA",
   carscanner: "Car Scanner",
+  "byd-tracker": "BYD Tracker",
+  "home-assistant": "Home Assistant",
   highmobility: "High Mobility",
   derived: "ABRP estimate",
 };

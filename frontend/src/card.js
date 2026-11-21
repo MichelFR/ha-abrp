@@ -7,6 +7,12 @@ import { hoursSince, isEntityId, isTemplate, num, relTime } from "./format.js";
 import { localize } from "./localize.js";
 import { ensureHaComponents } from "./ha-components.js";
 import { cardStyles } from "./styles.js";
+import {
+  OBD,
+  RECENT,
+  pillCloudStatus,
+  recentProviders,
+} from "./views/connections.js";
 import { renderLiveData } from "./views/live-data.js";
 import { renderOptionsDialog } from "./views/options-dialog.js";
 import { renderSpeedLimit } from "./views/speed-limit.js";
@@ -196,12 +202,13 @@ export class AbrpVehicleCard extends LitElement {
     </ha-card>`;
   }
 
-  /* The connection-status indicator (dot colour + text), reproducing the
-   * logic of the ABRP web app: green + pulse while telemetry is live (SoC seen
-   * within 5 min), otherwise a grey "last seen X ago" while under 4 h (ABRP's
-   * whole-hour "within 3 hours"), then
-   * sleeping/offline. Evaluated on every render so it ticks over in real time,
-   * exactly like the app. */
+  /* The connection-status indicator (dot colour + text), reproducing ABRP
+   * 8.0.0's useVehicleStatus: a lost cloud authorization first (red), then
+   * green + pulse while telemetry is live (SoC, or any non-GPS source, seen
+   * within 5 min), red on telemetry issues, a grey "last seen X ago" while
+   * the newest reading is under 4 h old (ABRP's whole-hour "within 3
+   * hours"), then sleeping / not connected / registering / offline.
+   * Evaluated on every render so it ticks over in real time, like the app. */
   _status() {
     const now = Date.now() / 1000;
     const toUnix = (s) => {
@@ -209,33 +216,52 @@ export class AbrpVehicleCard extends LitElement {
       const ms = new Date(s).getTime();
       return Number.isNaN(ms) ? null : ms / 1000;
     };
-    const ds = this._vs("sensor.data_source");
-    const socTs = toUnix(ds?.attributes?.soc_last_seen);
+    const live = (ts) => ts != null && ts > now - RECENT;
+    const attrs = this._vs("sensor.data_source")?.attributes || {};
+    const timestamps = attrs.timestamps || {};
+    const recent = recentProviders(attrs.providers, timestamps).filter(
+      (p) => p.provider !== "gps" && p.provider !== "derived"
+    );
+    const newest = recent[0]?.timestamp || null;
+    const cloud = pillCloudStatus(attrs, recent, now);
+
+    const socTs = toUnix(attrs.soc_last_seen);
     const soc = Number(this._vs("sensor.soc")?.state);
-    const recentSoc = Number.isFinite(soc) && socTs != null && now - socTs < 300;
+    const recentSoc = Number.isFinite(soc) && live(socTs);
+    const isLive = recentSoc || live(newest);
+    const chargingFresh =
+      live(Number(timestamps.is_charging) || null) ||
+      live(Number(timestamps.power) || null);
     const charging = this._vs("binary_sensor.charging")?.state === "on";
     const power = Math.abs(Number(this._vs("sensor.charging_power")?.state));
-    const asleep = this._vs("binary_sensor.asleep")?.state === "on";
-    // Prefer the data_source attribute (always available) over the last-update
-    // sensor, which the user may have disabled.
-    const lastSeenState =
-      ds?.attributes?.last_seen ?? this._vs("sensor.last_update")?.state;
-    const lastSeenTs = toUnix(lastSeenState);
+    // The newest provider reading, like ABRP; the data source's overall
+    // last-seen time when no per-field timestamps are available.
+    const lastSeenTs =
+      newest ??
+      toUnix(attrs.last_seen ?? this._vs("sensor.last_update")?.state);
+    const gray = (text) => ({ color: "gray", pulse: false, text });
 
-    if (recentSoc && charging && Number.isFinite(power) && power > 0)
+    if (cloud === "unauthorized")
+      return { color: "red", pulse: true, text: this._t("connection.unauthorized") };
+    if (isLive && chargingFresh && charging && Number.isFinite(power) && power > 0)
       return { color: "green", pulse: true, text: this._t("card.charging") };
-    if (recentSoc)
+    if (isLive)
       return { color: "green", pulse: true, text: this._t("card.connected") };
+    if (attrs.tlm_issues)
+      return { color: "red", pulse: true, text: this._t("card.tlm_issues") };
     if (lastSeenTs != null && hoursSince(lastSeenTs, now) <= 3) {
-      const rel = relTime(lastSeenState, this.hass);
-      return {
-        color: "gray",
-        pulse: false,
-        text: rel ? this._t("card.last_seen", { time: rel }) : this._t("card.never_seen"),
-      };
+      const rel = relTime(new Date(lastSeenTs * 1000).toISOString(), this.hass);
+      return gray(
+        rel ? this._t("card.last_seen", { time: rel }) : this._t("card.never_seen")
+      );
     }
-    if (asleep) return { color: "gray", pulse: false, text: this._t("card.sleeping") };
-    return { color: "gray", pulse: false, text: this._t("card.offline") };
+    if (cloud === "sleeping") return gray(this._t("card.sleeping"));
+    // Like the web app (no Bluetooth there): a paired OBD dongle that isn't
+    // delivering reads as "not connected".
+    if (OBD.has(attrs.tlm_type) || cloud === "notConnected")
+      return gray(this._t("connection.notConnected"));
+    if (cloud === "registering") return gray(this._t("connection.registering"));
+    return gray(this._t("card.offline"));
   }
 
   _renderMain(vehicle) {

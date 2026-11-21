@@ -270,6 +270,22 @@ SENSORS: tuple[AbrpSensorDescription, ...] = (
         value_fn=lambda s: s.batt_temp_c,
     ),
     AbrpSensorDescription(
+        key="battery_temp_min",
+        translation_key="battery_temp_min",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.batt_temp_min_c,
+    ),
+    AbrpSensorDescription(
+        key="battery_temp_max",
+        translation_key="battery_temp_max",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.batt_temp_max_c,
+    ),
+    AbrpSensorDescription(
         key="cabin_temp",
         translation_key="cabin_temp",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -507,6 +523,7 @@ class AbrpMateDataSourceSensor(AbrpMateEntity, SensorEntity):
             "cloud_connected": snapshot.cloud_connected,
             "cloud_last_seen": snapshot.cloud_last_seen,
             "tlm_authorized": snapshot.tlm_authorized,
+            "tlm_issues": snapshot.tlm_issues,
             "asleep": snapshot.is_asleep,
         }
 

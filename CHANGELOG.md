@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.4.1
+
+Re-checked against ABRP web app 8.0.0 (build 6110). Most of 8.0.0 is a new
+in-car navigation screen the integration can't see. The telemetry, session,
+and settings calls are unchanged; these are the parts that changed.
+
+### Added
+
+- **Battery temperature min/max sensors.** ABRP 8.0.0 receives the coldest
+  and warmest battery temperature from sources that report them. They come in
+  as two new sensors, Battery temperature min and max (unknown for cars that
+  don't send them).
+- **Battery temperature range on the card.** Like ABRP, the Live data tile
+  now shows the range across min, max, and overall temperature (e.g.
+  "18–24 °C"), captioned with the newest reading.
+- **New data sources named like ABRP:** "Home Assistant", "BYD Tracker", and
+  "ABRP OTA", in tile captions, the connection rows, and from the live stream.
+
+### Changed
+
+- **Status line follows ABRP 8.0.0.** A lost cloud authorization now shows
+  "Not authorized" in red ahead of everything else. The line goes green when
+  any source (not just the SoC) delivered data in the last 5 minutes. It
+  turns red on "Connection issues" when ABRP has flagged the vehicle's
+  telemetry, and falls back to ABRP's "Not connected" and "Registering"
+  states instead of "Offline". "Last seen" now counts from the newest reading
+  of a real data source, like ABRP. The data-source sensor gains a
+  `tlm_issues` attribute.
+- **Updated fallback metadata** to app version 8.0.0, build 6110 (the API key
+  is unchanged).
+
 ## 1.4.0
 
 Brings over what ABRP 7.1.8 added to its interface that fits Home Assistant.
